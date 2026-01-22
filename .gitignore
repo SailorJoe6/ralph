@@ -5,7 +5,10 @@ plans/
 .env
 
 # Prompts (project-specific, customized from .example.md templates)
-prompts/*.md
+prompts/design.md
+prompts/plan.md
+prompts/execute.md
+prompts/handoff.md
 
 # Log files (created in project root, not ralph directory)
 ralph-error.md

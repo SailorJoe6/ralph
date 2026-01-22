@@ -13,6 +13,7 @@ fi
 DESIGN_PROMPT="ralph/prompts/design.md"
 PLAN_PROMPT="ralph/prompts/plan.md"
 EXECUTE_PROMPT="ralph/prompts/execute.md"
+HANDOFF_PROMPT="ralph/prompts/handoff.md"
 
 # Configurable planning document paths
 : "${SPECIFICATION:=ralph/plans/SPECIFICATION.md}"
@@ -244,6 +245,30 @@ while :; do
     if ! "$CALLBACK"; then
       echo "Callback failed: $CALLBACK" >&2
       exit 1
+    fi
+  fi
+
+  # Run handoff (execute phase only)
+  if [[ "$PROMPT" == "$EXECUTE_PROMPT" ]]; then
+    if [[ -f "$HANDOFF_PROMPT" ]]; then
+      echo "Running handoff..."
+      handoff_text="$(cat "$HANDOFF_PROMPT")"
+
+      if [[ $USE_CODEX -eq 1 ]]; then
+        if [[ -n "$CONTAINER_NAME" ]]; then
+          set_container_exec_flags 1
+          container_exec codex resume --last "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+        else
+          codex resume --last "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+        fi
+      else
+        if [[ -n "$CONTAINER_NAME" ]]; then
+          set_container_exec_flags 1
+          container_exec claude --continue "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+        else
+          claude --continue "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+        fi
+      fi
     fi
   fi
 done
