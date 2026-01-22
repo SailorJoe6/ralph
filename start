@@ -9,10 +9,12 @@ if [[ -f "$SCRIPT_DIR/.env" ]]; then
   source "$SCRIPT_DIR/.env"
 fi
 
-# Default paths (relative to project root, not script location)
-: "${DESIGN_PROMPT:=ralph/prompts/design.md}"
-: "${PLAN_PROMPT:=ralph/prompts/plan.md}"
-: "${EXECUTE_PROMPT:=ralph/prompts/execute.md}"
+# Hardcoded prompt paths (must match .gitignore pattern)
+DESIGN_PROMPT="ralph/prompts/design.md"
+PLAN_PROMPT="ralph/prompts/plan.md"
+EXECUTE_PROMPT="ralph/prompts/execute.md"
+
+# Configurable planning document paths
 : "${SPECIFICATION:=ralph/plans/SPECIFICATION.md}"
 : "${EXECUTION_PLAN:=ralph/plans/EXECUTION_PLAN.md}"
 
