@@ -1,0 +1,247 @@
+#!/usr/bin/env bash
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Load .env file if it exists (from ralph directory)
+if [[ -f "$SCRIPT_DIR/.env" ]]; then
+  # shellcheck disable=SC1090
+  source "$SCRIPT_DIR/.env"
+fi
+
+# Default paths (relative to project root, not script location)
+: "${DESIGN_PROMPT:=ralph/prompts/design.md}"
+: "${PLAN_PROMPT:=ralph/prompts/plan.md}"
+: "${EXECUTE_PROMPT:=ralph/prompts/execute.md}"
+: "${SPECIFICATION:=ralph/plans/SPECIFICATION.md}"
+: "${EXECUTION_PLAN:=ralph/plans/EXECUTION_PLAN.md}"
+
+# Hardcoded log files (always in project root)
+ERROR_LOG="ralph-error.md"
+OUT_LOG="ralph-output.md"
+
+# Default behavior flags
+: "${UNATTENDED:=0}"
+: "${USE_CODEX:=0}"
+: "${CALLBACK:=}"
+: "${CONTAINER_NAME:=}"
+: "${CONTAINER_RUNTIME:=docker}"
+
+# CONTAINER_WORKDIR defaults to /<basename> if using container
+# This will be set dynamically if --container is used without --workdir
+
+PASS=0
+
+trap 'exit 0' INT
+
+# Parse command-line arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -u|--unattended)
+      UNATTENDED=1
+      shift
+      ;;
+    --codex)
+      USE_CODEX=1
+      shift
+      ;;
+    --container)
+      if [[ $# -lt 2 ]]; then
+        echo "Error: --container requires a container name"
+        exit 2
+      fi
+      CONTAINER_NAME="$2"
+      shift 2
+      ;;
+    --workdir)
+      if [[ $# -lt 2 ]]; then
+        echo "Error: --workdir requires a path"
+        exit 2
+      fi
+      CONTAINER_WORKDIR="$2"
+      shift 2
+      ;;
+    --callback)
+      if [[ $# -lt 2 ]]; then
+        echo "Error: --callback requires a script path"
+        exit 2
+      fi
+      CALLBACK="$2"
+      shift 2
+      ;;
+    -h|--help)
+      echo "Usage: $0 [OPTIONS]"
+      echo ""
+      echo "Options:"
+      echo "  -u, --unattended        Run in unattended mode (execute phase only)"
+      echo "  --codex                 Use Codex instead of Claude"
+      echo "  --container <name>      Execute commands inside specified container"
+      echo "  --workdir <path>        Container working directory (default: /<basename>)"
+      echo "  --callback <script>     Run script after each pass"
+      echo "  -h, --help              Show this help message"
+      exit 0
+      ;;
+    *)
+      echo "Error: Unknown option: $1"
+      echo "Usage: $0 [OPTIONS]"
+      echo "Run '$0 --help' for more information"
+      exit 2
+      ;;
+  esac
+done
+
+# Set default CONTAINER_WORKDIR if using container and not explicitly set
+if [[ -n "$CONTAINER_NAME" && -z "$CONTAINER_WORKDIR" ]]; then
+  BASENAME="$(basename "$(pwd)")"
+  CONTAINER_WORKDIR="/$BASENAME"
+fi
+
+# Validate callback if specified
+if [[ -n "$CALLBACK" ]]; then
+  if ! command -v -- "$CALLBACK" >/dev/null 2>&1; then
+    echo "Error: --callback not found or not executable: $CALLBACK" >&2
+    exit 2
+  fi
+fi
+
+# Validate container runtime if using containers
+if [[ -n "$CONTAINER_NAME" ]]; then
+  if ! command -v "$CONTAINER_RUNTIME" >/dev/null 2>&1; then
+    echo "Error: $CONTAINER_RUNTIME not found (required for --container)" >&2
+    exit 2
+  fi
+fi
+
+ensure_container_running() {
+  if [[ -z "$CONTAINER_NAME" ]]; then
+    return 0
+  fi
+
+  local running
+  running="$("$CONTAINER_RUNTIME" inspect -f '{{.State.Running}}' "$CONTAINER_NAME" 2>/dev/null)"
+  if [[ -z "$running" ]]; then
+    echo "Error: container not found: $CONTAINER_NAME" >&2
+    exit 2
+  fi
+  if [[ "$running" != "true" ]]; then
+    echo "Error: container is not running: $CONTAINER_NAME" >&2
+    exit 2
+  fi
+}
+
+container_exec() {
+  "$CONTAINER_RUNTIME" exec "${CONTAINER_EXEC_FLAGS[@]}" -w "$CONTAINER_WORKDIR" "$CONTAINER_NAME" "$@"
+}
+
+set_container_exec_flags() {
+  local require_tty="$1"
+  if [[ "$require_tty" == "1" ]]; then
+    if [[ ! -t 0 ]]; then
+      echo "Error: interactive mode requires a TTY. Re-run from a real terminal or use --unattended." >&2
+      exit 2
+    fi
+    CONTAINER_EXEC_FLAGS=(-i -t)
+  else
+    CONTAINER_EXEC_FLAGS=(-i)
+  fi
+}
+
+# Main loop - iterate through workflow phases
+while :; do
+  PASS=$((PASS + 1))
+  PROMPT="$DESIGN_PROMPT"
+
+  # Determine which phase we're in based on planning documents
+  if [[ -f "$SPECIFICATION" && -f "$EXECUTION_PLAN" ]]; then
+    PROMPT="$EXECUTE_PROMPT"
+  elif [[ -f "$SPECIFICATION" ]]; then
+    PROMPT="$PLAN_PROMPT"
+  elif [[ -f "$EXECUTION_PLAN" ]]; then
+    echo "Error: $EXECUTION_PLAN exists but $SPECIFICATION is missing."
+    exit 1
+  fi
+
+  # Validate prompt file exists and provide helpful error message
+  if [[ ! -f "$PROMPT" ]]; then
+    echo "Error: Prompt file not found: $PROMPT"
+    echo ""
+    echo "Prompts are project-specific and must be customized for your project."
+    echo "Copy from the example template:"
+    echo ""
+    if [[ "$PROMPT" == *"/design.md" ]]; then
+      echo "  cp ralph/prompts/design.example.md ralph/prompts/design.md"
+    elif [[ "$PROMPT" == *"/plan.md" ]]; then
+      echo "  cp ralph/prompts/plan.example.md ralph/prompts/plan.md"
+    elif [[ "$PROMPT" == *"/execute.md" ]]; then
+      echo "  cp ralph/prompts/execute.example.md ralph/prompts/execute.md"
+    fi
+    echo ""
+    echo "Then edit the prompt to reference your project's documentation."
+    exit 1
+  fi
+
+  # Only run unattended during execution; design/plan require user input!
+  if [[ "$PROMPT" == "$EXECUTE_PROMPT" && $UNATTENDED -eq 1 ]]; then
+    ensure_container_running
+    {
+      printf '\n---\n\nPass %d:\n' "$PASS"
+      if [[ $USE_CODEX -eq 1 ]]; then
+        prompt_text="$(cat "$PROMPT")"
+        if [[ -n "$CONTAINER_NAME" ]]; then
+          set_container_exec_flags 0
+          container_exec codex exec --full-auto --sandbox danger-full-access "$prompt_text"
+        else
+          codex exec --full-auto --sandbox danger-full-access "$prompt_text"
+        fi
+      else
+        prompt_text="$(cat "$PROMPT")"
+        if [[ -n "$CONTAINER_NAME" ]]; then
+          set_container_exec_flags 0
+          container_exec claude -p --dangerously-skip-permissions "$prompt_text"
+        else
+          claude -p --dangerously-skip-permissions "$prompt_text"
+        fi
+      fi
+    } >> "$OUT_LOG" 2> "$ERROR_LOG"
+  else
+    ensure_container_running
+    if [[ $USE_CODEX -eq 1 ]]; then
+      prompt_text="$(cat "$PROMPT")"
+      if [[ -n "$CONTAINER_NAME" ]]; then
+        set_container_exec_flags 1
+        container_exec codex "$prompt_text" 2> "$ERROR_LOG"
+      else
+        codex "$prompt_text" 2> "$ERROR_LOG"
+      fi
+    else
+      prompt_text="$(cat "$PROMPT")"
+      if [[ -n "$CONTAINER_NAME" ]]; then
+        set_container_exec_flags 1
+        container_exec bash -c 'trap "exit 130" INT; exec claude "$@"' _ "$prompt_text" 2> "$ERROR_LOG"
+      else
+        bash -c 'trap "exit 130" INT; exec claude "$@"' _ "$prompt_text" 2> "$ERROR_LOG"
+      fi
+    fi
+  fi
+  status=$?
+  if [[ $status -eq 130 ]]; then
+    exit 0
+  fi
+
+  if [[ $status -ne 0 ]]; then
+    if [[ $USE_CODEX -eq 1 ]]; then
+      echo "Codex exited with status $status"
+    else
+      echo "Claude exited with status $status"
+    fi
+    cat "$ERROR_LOG"
+    exit 1
+  fi
+
+  if [[ -n "$CALLBACK" ]]; then
+    if ! "$CALLBACK"; then
+      echo "Callback failed: $CALLBACK" >&2
+      exit 1
+    fi
+  fi
+done

@@ -1,0 +1,12 @@
+# Planning documents (ephemeral, per-project)
+plans/
+
+# Configuration (project-specific)
+.env
+
+# Prompts (project-specific, customized from .example.md templates)
+prompts/*.md
+
+# Log files (created in project root, not ralph directory)
+ralph-error.md
+ralph-output.md
