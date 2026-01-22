@@ -274,11 +274,13 @@ while :; do
     fi
   fi
 
-  # Run handoff (execute phase only)
+  # Run handoff (execute phase only, and only if planning docs still exist or in freestyle mode)
   if [[ $EXECUTE_MODE -eq 1 ]]; then
-    if [[ -f "$HANDOFF_PROMPT" ]]; then
-      echo "Running handoff..."
-      handoff_text="$(cat "$HANDOFF_PROMPT")"
+    # Only run handoff if we're in freestyle mode OR both planning docs still exist
+    if [[ $FREESTYLE -eq 1 || (-f "$SPECIFICATION" && -f "$EXECUTION_PLAN") ]]; then
+      if [[ -f "$HANDOFF_PROMPT" ]]; then
+        echo "Running handoff..."
+        handoff_text="$(cat "$HANDOFF_PROMPT")"
 
       if [[ $USE_CODEX -eq 1 ]]; then
         if [[ -n "$CONTAINER_NAME" ]]; then
@@ -295,6 +297,7 @@ while :; do
           claude --continue "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
         fi
       fi
+    fi
     fi
   fi
 done

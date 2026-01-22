@@ -260,7 +260,11 @@ The handoff phase ensures that each work session ends with comprehensive documen
 - Update planning docs, not beads comments alone
 
 **Invocation:**
-The handoff phase runs automatically after each execute phase pass. It cannot be invoked independently.
+The handoff phase runs automatically after each execute phase pass, but only if:
+- In freestyle mode, OR
+- Both the specification and execution plan still exist
+
+If the AI completes all work and deletes the planning documents as instructed in `execute.md`, the handoff phase will be skipped (since there's nothing left to hand off).
 
 ## File Locations
 
