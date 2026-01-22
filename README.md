@@ -48,6 +48,7 @@ cp ralph/prompts/design.example.md ralph/prompts/design.md
 cp ralph/prompts/plan.example.md ralph/prompts/plan.md
 cp ralph/prompts/execute.example.md ralph/prompts/execute.md
 cp ralph/prompts/handoff.example.md ralph/prompts/handoff.md
+cp ralph/prompts/prepare.example.md ralph/prompts/prepare.md
 
 # Edit each prompt to reference your project's specific documentation
 # For example, update file paths, project names, and workflow instructions
@@ -95,7 +96,7 @@ Key configuration variables:
 - **Prompt paths** - Customize locations of design/plan/execute prompts
 - **Planning document paths** - Customize where specifications and plans are stored
 - **Container configuration** - Set container name, workdir, and runtime
-- **Behavior flags** - Enable unattended mode, use Codex, set callbacks
+- **Behavior flags** - Use Codex, set callbacks
 
 See `.env.example` for all available options with detailed comments.
 
@@ -105,7 +106,8 @@ See `.env.example` for all available options with detailed comments.
 Usage: ralph/start [OPTIONS]
 
 Options:
-  -u, --unattended        Run in unattended mode (execute phase only)
+  -u, --unattended        Run in unattended mode (execute phase only, CLI-only)
+  -f, --freestyle         Run execute loop with prepare prompt (skip spec/plan checks)
   --codex                 Use Codex instead of Claude
   --container <name>      Execute commands inside specified container
   --workdir <path>        Container working directory (default: /<basename>)
@@ -152,11 +154,12 @@ ln -s ../../ralph/prompts/design.md .claude/commands/design.md
 ln -s ../../ralph/prompts/plan.md .claude/commands/plan.md
 ln -s ../../ralph/prompts/execute.md .claude/commands/execute.md
 ln -s ../../ralph/prompts/handoff.md .claude/commands/handoff.md
+ln -s ../../ralph/prompts/prepare.md .claude/commands/prepare.md
 ```
 
-Then you can run `/design`, `/plan`, `/execute`, or `/handoff` directly in your AI assistant.
+Then you can run `/design`, `/plan`, `/execute`, `/handoff`, or `/prepare` directly in your AI assistant.
 
-**Note:** This is optional. You can always invoke ralph via `ralph/start` without symlinks. The handoff phase runs automatically after each execute pass, but the `/handoff` command can be useful for manual handoff preparation.
+**Note:** This is optional. You can always invoke ralph via `ralph/start` without symlinks. The handoff phase runs automatically after each execute pass, but the `/handoff` command can be useful for manual handoff preparation. The `/prepare` command is used for freestyle mode.
 
 ## Workflow Phases
 
@@ -211,6 +214,31 @@ ralph/start --unattended
 ```
 
 In unattended mode, the AI runs with `--dangerously-skip-permissions` and logs all output to `ralph-output.md` and errors to `ralph-error.md`.
+
+**Important:** Unattended mode is CLI-only and cannot be enabled via `.env` or environment variables. It only works with the execute phase (not freestyle mode).
+
+### Freestyle Mode
+
+**When:** Using `--freestyle` flag (ignores planning documents)
+
+**What happens:**
+- AI uses the `prepare.md` prompt instead of design/plan/execute workflow
+- Skips specification and execution plan checks entirely
+- Runs in execute loop mode (loops continuously until interrupted)
+- Handoff runs automatically after each freestyle pass
+- Must be run in interactive mode (unattended not supported)
+
+**Use case:** Quick iterations or exploratory work without formal planning documents. Useful for small changes, experiments, or when you want to work without the structure of the design → plan → execute workflow.
+
+**Invocation:**
+```bash
+ralph/start --freestyle
+```
+
+**Restrictions:**
+- Cannot be combined with `--unattended` (freestyle requires interactive input)
+- Must have `ralph/prompts/prepare.md` customized for your project
+- Still supports `--codex`, `--container`, and `--workdir` options
 
 ### Handoff Phase
 
