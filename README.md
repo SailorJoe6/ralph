@@ -9,11 +9,12 @@ Ralph orchestrates a structured workflow for AI-assisted development:
 1. **Design Phase** - Discuss requirements with AI, create specification
 2. **Plan Phase** - AI creates detailed execution plan based on specification
 3. **Execute Phase** - AI implements the plan with optional unattended mode
+4. **Handoff Phase** - AI updates planning docs with context for next session (runs automatically after each execute pass)
 
 Ralph automatically progresses through phases based on which planning documents exist:
 - No planning docs → runs design phase
 - `SPECIFICATION.md` exists → runs plan phase
-- Both specification and execution plan exist → runs execute phase
+- Both specification and execution plan exist → runs execute phase (with automatic handoff after each pass)
 
 The workflow loops continuously, allowing iterative development with AI assistance.
 
@@ -46,6 +47,7 @@ Ralph's prompts reference project-specific documentation (like `DEVELOPERS.md`, 
 cp ralph/prompts/design.example.md ralph/prompts/design.md
 cp ralph/prompts/plan.example.md ralph/prompts/plan.md
 cp ralph/prompts/execute.example.md ralph/prompts/execute.md
+cp ralph/prompts/handoff.example.md ralph/prompts/handoff.md
 
 # Edit each prompt to reference your project's specific documentation
 # For example, update file paths, project names, and workflow instructions
@@ -149,11 +151,12 @@ mkdir -p .claude/commands
 ln -s ../../ralph/prompts/design.md .claude/commands/design.md
 ln -s ../../ralph/prompts/plan.md .claude/commands/plan.md
 ln -s ../../ralph/prompts/execute.md .claude/commands/execute.md
+ln -s ../../ralph/prompts/handoff.md .claude/commands/handoff.md
 ```
 
-Then you can run `/design`, `/plan`, or `/execute` directly in your AI assistant.
+Then you can run `/design`, `/plan`, `/execute`, or `/handoff` directly in your AI assistant.
 
-**Note:** This is optional. You can always invoke ralph via `ralph/start` without symlinks.
+**Note:** This is optional. You can always invoke ralph via `ralph/start` without symlinks. The handoff phase runs automatically after each execute pass, but the `/handoff` command can be useful for manual handoff preparation.
 
 ## Workflow Phases
 
@@ -208,6 +211,28 @@ ralph/start --unattended
 ```
 
 In unattended mode, the AI runs with `--dangerously-skip-permissions` and logs all output to `ralph-output.md` and errors to `ralph-error.md`.
+
+### Handoff Phase
+
+**When:** Automatically runs after each execute phase pass
+
+**What happens:**
+- AI prepares to hand off work to next session/programmer
+- Updates specification and execution plan with learned context
+- Ensures all necessary context is captured in planning documents
+- Does not create separate handoff documents
+
+**Purpose:**
+The handoff phase ensures that each work session ends with comprehensive documentation updates. This allows future sessions or programmers to pick up the work without missing context.
+
+**Key principles:**
+- Don't Repeat Yourself (DRY): Specs are for high-level design, plans are for implementation steps and current status
+- Keep documentation detailed but concise
+- Avoid fluff and repetition
+- Update planning docs, not beads comments alone
+
+**Invocation:**
+The handoff phase runs automatically after each execute phase pass. It cannot be invoked independently.
 
 ## File Locations
 

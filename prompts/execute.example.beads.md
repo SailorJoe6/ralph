@@ -4,9 +4,15 @@ Study the following files in order to understand the project:
 2. **[DEVELOPERS.md](DEVELOPERS.md)** - Build setup, development workflow, and testing
 3. **[docs/README.md](docs/README.md)** - Documentation index and navigation
 
+Finally run `bd prime` to understand our beads workflow.
+
 Next, study [the plan](ralph/plans/EXECUTION_PLAN.md).  The plan describes the implementation steps for the current [spec doc](ralph/plans/SPECIFICATION.md).  Study both of these files.   This will get you up to speed on where we are, what we are working on and what's left to do.
 
+There may be some tickets in beads related to the plan, and you may need to create beads tickets as you implement the plan.  There may be some tickets that are not related to the plan.  Focus on the plan and plan related tickets.
+
 Some of the work may have been completed in previous sessions.  Audit the code against the spec and the plan to deterine what work is left.
+
+If you find a related ticket that is not closed in beads, but you find the work for the ticket is all the way done, you should check to ensure proper documentation and tests exist for the finished work, and if everything is perfect you should close that ticket and ensure the plan represents the finished work.
 
 If there is no work left to do on this plan, then check if the spec has been completely converted to a document (or set of documents) in the `docs/` folder describing the new state of this code.  If that hasn't been done, then doing so is your next task.
 
