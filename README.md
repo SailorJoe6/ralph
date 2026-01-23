@@ -20,21 +20,21 @@ The workflow loops continuously, allowing iterative development with AI assistan
 
 ## Installation
 
-Clone ralph into your project and add it to `.gitignore`:
+Clone ralph into your project and add it to the parent repo's git exclude file:
 
 ```bash
 # Clone ralph into your project
 git clone https://github.com/<username>/ralph.git ralph
 
-# Add to .gitignore to keep ralph separate from your project
-echo "ralph/" >> .gitignore
+# Add to .git/info/exclude to keep ralph separate from your project
+echo "ralph/" >> .git/info/exclude
 
 # (Optional) Create .env configuration
 cp ralph/.env.example ralph/.env
 # Edit ralph/.env with project-specific settings
 ```
 
-**Why this approach?** Cloning ralph and adding it to `.gitignore` keeps ralph's git history separate from your project while making it easy to update ralph independently with `git pull` from within the ralph directory.
+**Why this approach?** Cloning ralph and adding it to `.git/info/exclude` keeps ralph's git history separate from your project while keeping it undetectable in upstream diffs, and still makes it easy to update ralph independently with `git pull` from within the ralph directory.
 
 ## Prompt Customization (Required)
 
