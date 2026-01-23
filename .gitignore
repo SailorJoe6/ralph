@@ -12,4 +12,5 @@ prompts/handoff.md
 prompts/prepare.md
 
 # Log files (created under ralph/logs/)
-logs/
+logs/*
+!logs/.keep
