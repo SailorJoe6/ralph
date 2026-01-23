@@ -236,9 +236,9 @@ while :; do
         prompt_text="$(cat "$PROMPT")"
         if [[ -n "$CONTAINER_NAME" ]]; then
           set_container_exec_flags 0
-          container_exec codex exec --full-auto --sandbox danger-full-access "$prompt_text"
+          container_exec codex exec -a never --sandbox danger-full-access "$prompt_text"
         else
-          codex exec --full-auto --sandbox danger-full-access "$prompt_text"
+          codex exec -a never --sandbox danger-full-access "$prompt_text"
         fi
       else
         prompt_text="$(cat "$PROMPT")"
