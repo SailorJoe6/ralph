@@ -196,6 +196,13 @@ while :; do
     elif [[ -f "$EXECUTION_PLAN" ]]; then
       echo "Error: $EXECUTION_PLAN exists but $SPECIFICATION is missing."
       exit 1
+    else
+      # Neither planning document exists - check if blocked before entering design mode
+      BLOCKED_DIR="ralph/plans/blocked"
+      if [[ -f "$BLOCKED_DIR/SPECIFICATION.md" || -f "$BLOCKED_DIR/EXECUTION_PLAN.md" ]]; then
+        echo "the agent is blocked"
+        exit 1
+      fi
     fi
   fi
 
@@ -294,11 +301,25 @@ while :; do
         handoff_text="$(cat "$HANDOFF_PROMPT")"
 
       if [[ $USE_CODEX -eq 1 ]]; then
+        codex_session_id=""
+        if [[ -f "$ERROR_LOG" ]]; then
+          codex_session_id="$(
+            awk -F 'session id:' '/session id:/ {id=$2} END {gsub(/^[[:space:]]+|[[:space:]]+$/,"",id); print id}' "$ERROR_LOG"
+          )"
+        fi
         if [[ -n "$CONTAINER_NAME" ]]; then
           set_container_exec_flags 1
-          container_exec codex resume --last "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+          if [[ -n "$codex_session_id" ]]; then
+            container_exec codex resume "$codex_session_id" "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+          else
+            container_exec codex resume --last "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+          fi
         else
-          codex resume --last "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+          if [[ -n "$codex_session_id" ]]; then
+            codex resume "$codex_session_id" "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+          else
+            codex resume --last "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+          fi
         fi
       else
         if [[ -n "$CONTAINER_NAME" ]]; then

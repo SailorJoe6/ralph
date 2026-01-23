@@ -43,11 +43,11 @@ cp ralph/.env.example ralph/.env
 Ralph's prompts reference project-specific documentation (like `DEVELOPERS.md`, `docs/README.md`, etc.). You must copy the example prompts and customize them for your project:
 
 ```bash
-# Copy example prompts
+# Copy example prompts (use .example.beads.md where available, otherwise use .example.md)
 cp ralph/prompts/design.example.md ralph/prompts/design.md
 cp ralph/prompts/plan.example.md ralph/prompts/plan.md
-cp ralph/prompts/execute.example.md ralph/prompts/execute.md
-cp ralph/prompts/handoff.example.md ralph/prompts/handoff.md
+cp ralph/prompts/execute.example.beads.md ralph/prompts/execute.md
+cp ralph/prompts/handoff.example.beads.md ralph/prompts/handoff.md
 cp ralph/prompts/prepare.example.md ralph/prompts/prepare.md
 
 # Edit each prompt to reference your project's specific documentation
@@ -264,6 +264,8 @@ The handoff phase ensures that each work session ends with comprehensive documen
 The handoff phase runs automatically after each execute phase pass, but only if:
 - In freestyle mode, OR
 - Both the specification and execution plan still exist
+
+When using Codex, the handoff attempts to resume the exact session ID recorded in `ralph/logs/ERROR_LOG.md`. If no session ID is found, it falls back to `codex resume --last`.
 
 If the AI completes all work and deletes the planning documents as instructed in `execute.md`, the handoff phase will be skipped (since there's nothing left to hand off).
 
