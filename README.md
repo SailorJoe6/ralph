@@ -95,6 +95,7 @@ Key configuration variables:
 
 - **Prompt paths** - Customize locations of design/plan/execute prompts
 - **Planning document paths** - Customize where specifications and plans are stored
+- **Log configuration** - Set log directory and file paths
 - **Container configuration** - Set container name, workdir, and runtime
 - **Behavior flags** - Use Codex, set callbacks
 
@@ -213,7 +214,7 @@ ralph/start
 ralph/start --unattended
 ```
 
-In unattended mode, the AI runs with `--dangerously-skip-permissions` and logs all output to `ralph-output.md` and errors to `ralph-error.md`.
+In unattended mode, the AI runs with `--dangerously-skip-permissions` and logs all output to `ralph/logs/OUTPUT_LOG.md` and errors to `ralph/logs/ERROR_LOG.md`.
 
 **Important:** Unattended mode is CLI-only and cannot be enabled via `.env` or environment variables. It only works with the execute phase (not freestyle mode).
 
@@ -279,12 +280,12 @@ These paths are configurable via `.env` or environment variables.
 
 ### Log Files
 
-Log files are created in the project root (not inside ralph/):
+Log files are created under `ralph/logs/` (gitignored):
 
-- `ralph-error.md` - Error output from AI commands
-- `ralph-output.md` - Standard output in unattended mode
+- `ralph/logs/ERROR_LOG.md` - Error output from AI commands
+- `ralph/logs/OUTPUT_LOG.md` - Standard output in unattended mode
 
-**Note:** Add these to your project's `.gitignore` if desired.
+These paths are configurable via `.env` or environment variables.
 
 ## Updating Ralph
 

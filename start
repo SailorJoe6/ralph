@@ -23,9 +23,16 @@ PREPARE_PROMPT="ralph/prompts/prepare.md"
 : "${SPECIFICATION:=ralph/plans/SPECIFICATION.md}"
 : "${EXECUTION_PLAN:=ralph/plans/EXECUTION_PLAN.md}"
 
-# Hardcoded log files (always in project root)
-ERROR_LOG="ralph-error.md"
-OUT_LOG="ralph-output.md"
+# Log file locations (default to ralph/logs/ from the parent directory)
+: "${LOG_DIR:=ralph/logs}"
+: "${ERROR_LOG:=$LOG_DIR/ERROR_LOG.md}"
+
+# Backwards compatibility for legacy OUT_LOG env var
+if [[ -z "${OUTPUT_LOG+x}" && -n "${OUT_LOG:-}" ]]; then
+  OUTPUT_LOG="$OUT_LOG"
+fi
+
+: "${OUTPUT_LOG:=$LOG_DIR/OUTPUT_LOG.md}"
 
 # Default behavior flags
 : "${UNATTENDED:=0}"
@@ -39,6 +46,10 @@ OUT_LOG="ralph-output.md"
 # This will be set dynamically if --container is used without --workdir
 
 PASS=0
+
+if [[ -n "$LOG_DIR" ]]; then
+  mkdir -p "$LOG_DIR"
+fi
 
 trap 'exit 0' INT
 
@@ -231,7 +242,7 @@ while :; do
           claude -p --dangerously-skip-permissions "$prompt_text"
         fi
       fi
-    } >> "$OUT_LOG" 2> "$ERROR_LOG"
+    } >> "$OUTPUT_LOG" 2> "$ERROR_LOG"
   else
     ensure_container_running
     if [[ $USE_CODEX -eq 1 ]]; then

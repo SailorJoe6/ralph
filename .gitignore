@@ -11,6 +11,5 @@ prompts/execute.md
 prompts/handoff.md
 prompts/prepare.md
 
-# Log files (created in project root, not ralph directory)
-ralph-error.md
-ralph-output.md
+# Log files (created under ralph/logs/)
+logs/
