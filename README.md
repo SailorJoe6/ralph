@@ -109,6 +109,7 @@ Usage: ralph/start [OPTIONS]
 Options:
   -u, --unattended        Run in unattended mode (execute phase only, CLI-only)
   -f, --freestyle         Run execute loop with prepare prompt (skip spec/plan checks)
+  -y, --yolo              Enable all permissions without unattended execution
   --codex                 Use Codex instead of Claude
   --container <name>      Execute commands inside specified container
   --workdir <path>        Container working directory (default: /<basename>)
@@ -217,6 +218,16 @@ ralph/start --unattended
 In unattended mode, the AI runs with `--dangerously-skip-permissions` and logs all output to `ralph/logs/OUTPUT_LOG.md` and errors to `ralph/logs/ERROR_LOG.md`.
 
 **Important:** Unattended mode is CLI-only and cannot be enabled via `.env` or environment variables. It only works with the execute phase (not freestyle mode).
+
+**Yolo mode:**
+```bash
+ralph/start --yolo
+```
+
+Yolo mode enables full permissions but keeps the session interactive. It is intended for runs where you need elevated permissions without the unattended execute flow.
+
+**Restrictions:**
+- Cannot be combined with `--unattended` (yolo requires interactive input)
 
 ### Freestyle Mode
 

@@ -41,6 +41,7 @@ fi
 : "${CALLBACK:=}"
 : "${CONTAINER_NAME:=}"
 : "${CONTAINER_RUNTIME:=docker}"
+: "${YOLO:=0}"
 
 # CONTAINER_WORKDIR defaults to /<basename> if using container
 # This will be set dynamically if --container is used without --workdir
@@ -92,12 +93,17 @@ while [[ $# -gt 0 ]]; do
       FREESTYLE=1
       shift
       ;;
+    -y|--yolo)
+      YOLO=1
+      shift
+      ;;
     -h|--help)
       echo "Usage: $0 [OPTIONS]"
       echo ""
       echo "Options:"
       echo "  -u, --unattended        Run in unattended mode (execute phase only)"
       echo "  -f, --freestyle         Run execute loop with prepare prompt (skip spec/plan checks)"
+      echo "  -y, --yolo              Enable all permissions without unattended execution"
       echo "  --codex                 Use Codex instead of Claude"
       echo "  --container <name>      Execute commands inside specified container"
       echo "  --workdir <path>        Container working directory (default: /<basename>)"
@@ -118,6 +124,13 @@ done
 if [[ $FREESTYLE -eq 1 && $UNATTENDED -eq 1 ]]; then
   echo "Error: --freestyle and --unattended cannot be used together"
   echo "Freestyle mode requires interactive input and does not support unattended execution"
+  exit 2
+fi
+
+# Validate that --yolo and --unattended are not used together
+if [[ $YOLO -eq 1 && $UNATTENDED -eq 1 ]]; then
+  echo "Error: --yolo and --unattended cannot be used together"
+  echo "Yolo mode requires interactive input and does not support unattended execution"
   exit 2
 fi
 
@@ -256,17 +269,33 @@ while :; do
       prompt_text="$(cat "$PROMPT")"
       if [[ -n "$CONTAINER_NAME" ]]; then
         set_container_exec_flags 1
-        container_exec codex "$prompt_text" 2> "$ERROR_LOG"
+        if [[ $YOLO -eq 1 ]]; then
+          container_exec codex -a never --sandbox danger-full-access "$prompt_text" 2> "$ERROR_LOG"
+        else
+          container_exec codex "$prompt_text" 2> "$ERROR_LOG"
+        fi
       else
-        codex "$prompt_text" 2> "$ERROR_LOG"
+        if [[ $YOLO -eq 1 ]]; then
+          codex -a never --sandbox danger-full-access "$prompt_text" 2> "$ERROR_LOG"
+        else
+          codex "$prompt_text" 2> "$ERROR_LOG"
+        fi
       fi
     else
       prompt_text="$(cat "$PROMPT")"
       if [[ -n "$CONTAINER_NAME" ]]; then
         set_container_exec_flags 1
-        container_exec bash -c 'trap "exit 130" INT; exec claude "$@"' _ "$prompt_text" 2> "$ERROR_LOG"
+        if [[ $YOLO -eq 1 ]]; then
+          container_exec bash -c 'trap "exit 130" INT; exec claude --dangerously-skip-permissions "$@"' _ "$prompt_text" 2> "$ERROR_LOG"
+        else
+          container_exec bash -c 'trap "exit 130" INT; exec claude "$@"' _ "$prompt_text" 2> "$ERROR_LOG"
+        fi
       else
-        bash -c 'trap "exit 130" INT; exec claude "$@"' _ "$prompt_text" 2> "$ERROR_LOG"
+        if [[ $YOLO -eq 1 ]]; then
+          bash -c 'trap "exit 130" INT; exec claude --dangerously-skip-permissions "$@"' _ "$prompt_text" 2> "$ERROR_LOG"
+        else
+          bash -c 'trap "exit 130" INT; exec claude "$@"' _ "$prompt_text" 2> "$ERROR_LOG"
+        fi
       fi
     fi
   fi

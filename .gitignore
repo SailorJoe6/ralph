@@ -1,5 +1,5 @@
 # Planning documents (ephemeral, per-project)
-plans/
+plans/*
 
 # Configuration (project-specific)
 .env
