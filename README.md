@@ -270,6 +270,7 @@ The handoff phase ensures that each work session ends with comprehensive documen
 - Keep documentation detailed but concise
 - Avoid fluff and repetition
 - Update planning docs, not beads comments alone
+- Handoff honors `--unattended` and `--yolo` permissions for the resume step
 
 **Invocation:**
 The handoff phase runs automatically after each execute phase pass, but only if:
