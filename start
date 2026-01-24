@@ -326,50 +326,95 @@ while :; do
     # Only run handoff if we're in freestyle mode OR both planning docs still exist
     if [[ $FREESTYLE -eq 1 || (-f "$SPECIFICATION" && -f "$EXECUTION_PLAN") ]]; then
       if [[ -f "$HANDOFF_PROMPT" ]]; then
-        echo "Running handoff..."
         handoff_text="$(cat "$HANDOFF_PROMPT")"
         handoff_require_tty=1
         if [[ $UNATTENDED -eq 1 ]]; then
           handoff_require_tty=0
         fi
 
-        if [[ $USE_CODEX -eq 1 ]]; then
-          codex_session_id=""
-          if [[ -f "$ERROR_LOG" ]]; then
-            codex_session_id="$(
-              awk -F 'session id:' '/session id:/ {id=$2} END {gsub(/^[[:space:]]+|[[:space:]]+$/,"",id); print id}' "$ERROR_LOG"
-            )"
-          fi
-          if [[ $YOLO -eq 1 || $UNATTENDED -eq 1 ]]; then
-            handoff_codex_flags=(-a never --sandbox danger-full-access)
-          else
-            handoff_codex_flags=()
-          fi
-          if [[ -n "$CONTAINER_NAME" ]]; then
-            set_container_exec_flags "$handoff_require_tty"
-            if [[ -n "$codex_session_id" ]]; then
-              container_exec codex "${handoff_codex_flags[@]}" resume "$codex_session_id" "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+        if [[ $UNATTENDED -eq 1 ]]; then
+          {
+            echo "Running handoff..."
+            if [[ $USE_CODEX -eq 1 ]]; then
+              codex_session_id=""
+              if [[ -f "$ERROR_LOG" ]]; then
+                codex_session_id="$(
+                  awk -F 'session id:' '/session id:/ {id=$2} END {gsub(/^[[:space:]]+|[[:space:]]+$/,"",id); print id}' "$ERROR_LOG"
+                )"
+              fi
+              if [[ $YOLO -eq 1 || $UNATTENDED -eq 1 ]]; then
+                handoff_codex_flags=(-a never --sandbox danger-full-access)
+              else
+                handoff_codex_flags=()
+              fi
+              if [[ -n "$CONTAINER_NAME" ]]; then
+                set_container_exec_flags "$handoff_require_tty"
+                if [[ -n "$codex_session_id" ]]; then
+                  container_exec codex "${handoff_codex_flags[@]}" exec resume "$codex_session_id" "$handoff_text" || echo "Warning: Handoff failed (non-fatal)"
+                else
+                  container_exec codex "${handoff_codex_flags[@]}" exec resume --last "$handoff_text" || echo "Warning: Handoff failed (non-fatal)"
+                fi
+              else
+                if [[ -n "$codex_session_id" ]]; then
+                  codex "${handoff_codex_flags[@]}" exec resume "$codex_session_id" "$handoff_text" || echo "Warning: Handoff failed (non-fatal)"
+                else
+                  codex "${handoff_codex_flags[@]}" exec resume --last "$handoff_text" || echo "Warning: Handoff failed (non-fatal)"
+                fi
+              fi
             else
-              container_exec codex "${handoff_codex_flags[@]}" resume --last "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+              if [[ $YOLO -eq 1 || $UNATTENDED -eq 1 ]]; then
+                handoff_claude_flags=(--dangerously-skip-permissions)
+              else
+                handoff_claude_flags=()
+              fi
+              if [[ -n "$CONTAINER_NAME" ]]; then
+                set_container_exec_flags "$handoff_require_tty"
+                container_exec claude "${handoff_claude_flags[@]}" --continue "$handoff_text" || echo "Warning: Handoff failed (non-fatal)"
+              else
+                claude "${handoff_claude_flags[@]}" --continue "$handoff_text" || echo "Warning: Handoff failed (non-fatal)"
+              fi
             fi
-          else
-            if [[ -n "$codex_session_id" ]]; then
-              codex "${handoff_codex_flags[@]}" resume "$codex_session_id" "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
-            else
-              codex "${handoff_codex_flags[@]}" resume --last "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
-            fi
-          fi
+          } >> "$OUTPUT_LOG" 2> "$ERROR_LOG"
         else
-          if [[ $YOLO -eq 1 || $UNATTENDED -eq 1 ]]; then
-            handoff_claude_flags=(--dangerously-skip-permissions)
+          echo "Running handoff..."
+          if [[ $USE_CODEX -eq 1 ]]; then
+            codex_session_id=""
+            if [[ -f "$ERROR_LOG" ]]; then
+              codex_session_id="$(
+                awk -F 'session id:' '/session id:/ {id=$2} END {gsub(/^[[:space:]]+|[[:space:]]+$/,"",id); print id}' "$ERROR_LOG"
+              )"
+            fi
+            if [[ $YOLO -eq 1 || $UNATTENDED -eq 1 ]]; then
+              handoff_codex_flags=(-a never --sandbox danger-full-access)
+            else
+              handoff_codex_flags=()
+            fi
+            if [[ -n "$CONTAINER_NAME" ]]; then
+              set_container_exec_flags "$handoff_require_tty"
+              if [[ -n "$codex_session_id" ]]; then
+                container_exec codex "${handoff_codex_flags[@]}" exec resume "$codex_session_id" "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+              else
+                container_exec codex "${handoff_codex_flags[@]}" exec resume --last "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+              fi
+            else
+              if [[ -n "$codex_session_id" ]]; then
+                codex "${handoff_codex_flags[@]}" exec resume "$codex_session_id" "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+              else
+                codex "${handoff_codex_flags[@]}" exec resume --last "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+              fi
+            fi
           else
-            handoff_claude_flags=()
-          fi
-          if [[ -n "$CONTAINER_NAME" ]]; then
-            set_container_exec_flags "$handoff_require_tty"
-            container_exec claude "${handoff_claude_flags[@]}" --continue "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
-          else
-            claude "${handoff_claude_flags[@]}" --continue "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+            if [[ $YOLO -eq 1 || $UNATTENDED -eq 1 ]]; then
+              handoff_claude_flags=(--dangerously-skip-permissions)
+            else
+              handoff_claude_flags=()
+            fi
+            if [[ -n "$CONTAINER_NAME" ]]; then
+              set_container_exec_flags "$handoff_require_tty"
+              container_exec claude "${handoff_claude_flags[@]}" --continue "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+            else
+              claude "${handoff_claude_flags[@]}" --continue "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+            fi
           fi
         fi
       fi
