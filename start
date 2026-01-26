@@ -186,7 +186,7 @@ set_container_exec_flags() {
 
 set_permission_flags() {
   if [[ $YOLO -eq 1 || $UNATTENDED -eq 1 ]]; then
-    PERM_CODEX_FLAGS=(-a never --sandbox danger-full-access)
+    PERM_CODEX_FLAGS=(--dangerously-bypass-approvals-and-sandbox)
     PERM_CLAUDE_FLAGS=(--dangerously-skip-permissions)
   else
     PERM_CODEX_FLAGS=()

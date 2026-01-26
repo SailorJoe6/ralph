@@ -215,7 +215,7 @@ ralph/start
 ralph/start --unattended
 ```
 
-In unattended mode, the AI runs with `--dangerously-skip-permissions` and logs all output to `ralph/logs/OUTPUT_LOG.md` and errors to `ralph/logs/ERROR_LOG.md`.
+In unattended mode, the AI runs with elevated permissions (`--dangerously-skip-permissions` for Claude, or `--dangerously-bypass-approvals-and-sandbox` for Codex) and logs all output to `ralph/logs/OUTPUT_LOG.md` and errors to `ralph/logs/ERROR_LOG.md`.
 
 **Important:** Unattended mode is CLI-only and cannot be enabled via `.env` or environment variables. It only works with the execute phase (not freestyle mode).
 
