@@ -274,20 +274,35 @@ while :; do
     echo "Error: Prompt file not found: $PROMPT"
     echo ""
     echo "Prompts are project-specific and must be customized for your project."
-    echo "Copy from the example template:"
+    echo "Copy from the example template(s):"
     echo ""
-    if [[ "$PROMPT" == *"/design.md" ]]; then
+    missing_any=0
+    if [[ ! -f "$DESIGN_PROMPT" ]]; then
       echo "  cp ralph/prompts/design.example.md ralph/prompts/design.md"
-    elif [[ "$PROMPT" == *"/plan.md" ]]; then
+      missing_any=1
+    fi
+    if [[ ! -f "$PLAN_PROMPT" ]]; then
       echo "  cp ralph/prompts/plan.example.md ralph/prompts/plan.md"
-    elif [[ "$PROMPT" == *"/execute.md" ]]; then
+      missing_any=1
+    fi
+    if [[ ! -f "$EXECUTE_PROMPT" ]]; then
       echo "  cp ralph/prompts/execute.example.md ralph/prompts/execute.md"
-    elif [[ "$PROMPT" == *"/handoff.md" ]]; then
-      echo "  cp ralph/prompts/handoff.example.md ralph/prompts/handoff.md"
-    elif [[ "$PROMPT" == *"/blocked.md" ]]; then
-      echo "  Create ralph/prompts/blocked.md"
-    elif [[ "$PROMPT" == *"/prepare.md" ]]; then
+      missing_any=1
+    fi
+    if [[ ! -f "$PREPARE_PROMPT" ]]; then
       echo "  cp ralph/prompts/prepare.example.md ralph/prompts/prepare.md"
+      missing_any=1
+    fi
+    if [[ ! -f "$HANDOFF_PROMPT" ]]; then
+      echo "  cp ralph/prompts/handoff.example.md ralph/prompts/handoff.md"
+      missing_any=1
+    fi
+    if [[ ! -f "$BLOCKED_PROMPT" ]]; then
+      echo "  Create ralph/prompts/blocked.md"
+      missing_any=1
+    fi
+    if [[ $missing_any -eq 0 ]]; then
+      echo "  (all prompt files are present)"
     fi
     echo ""
     echo "Then edit the prompt to reference your project's documentation."
