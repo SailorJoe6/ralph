@@ -5,11 +5,12 @@ plans/*
 .env
 
 # Prompts (project-specific, customized from .example.md templates)
+prompts/prepare.md
 prompts/design.md
 prompts/plan.md
 prompts/execute.md
 prompts/handoff.md
-prompts/prepare.md
+prompts/blocked.md
 
 # Log files (created under ralph/logs/)
 logs/*

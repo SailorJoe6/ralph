@@ -18,6 +18,7 @@ PLAN_PROMPT="ralph/prompts/plan.md"
 EXECUTE_PROMPT="ralph/prompts/execute.md"
 HANDOFF_PROMPT="ralph/prompts/handoff.md"
 PREPARE_PROMPT="ralph/prompts/prepare.md"
+BLOCKED_PROMPT="ralph/prompts/blocked.md"
 
 # Configurable planning document paths
 : "${SPECIFICATION:=ralph/plans/SPECIFICATION.md}"
@@ -101,9 +102,9 @@ while [[ $# -gt 0 ]]; do
       echo "Usage: $0 [OPTIONS]"
       echo ""
       echo "Options:"
-      echo "  -u, --unattended        Run in unattended mode (execute phase only)"
+      echo "  -u, --unattended        Full permissions; use non-interactive mode only during execute/handoff"
       echo "  -f, --freestyle         Run execute loop with prepare prompt (skip spec/plan checks)"
-      echo "  -y, --yolo              Enable all permissions without unattended execution"
+      echo "  -y, --yolo              Enable full permissions (interactive unless -u)"
       echo "  --codex                 Use Codex instead of Claude"
       echo "  --container <name>      Execute commands inside specified container"
       echo "  --workdir <path>        Container working directory (default: /<basename>)"
@@ -124,13 +125,6 @@ done
 if [[ $FREESTYLE -eq 1 && $UNATTENDED -eq 1 ]]; then
   echo "Error: --freestyle and --unattended cannot be used together"
   echo "Freestyle mode requires interactive input and does not support unattended execution"
-  exit 2
-fi
-
-# Validate that --yolo and --unattended are not used together
-if [[ $YOLO -eq 1 && $UNATTENDED -eq 1 ]]; then
-  echo "Error: --yolo and --unattended cannot be used together"
-  echo "Yolo mode requires interactive input and does not support unattended execution"
   exit 2
 fi
 
@@ -190,11 +184,60 @@ set_container_exec_flags() {
   fi
 }
 
+set_permission_flags() {
+  if [[ $YOLO -eq 1 || $UNATTENDED -eq 1 ]]; then
+    PERM_CODEX_FLAGS=(-a never --sandbox danger-full-access)
+    PERM_CLAUDE_FLAGS=(--dangerously-skip-permissions)
+  else
+    PERM_CODEX_FLAGS=()
+    PERM_CLAUDE_FLAGS=()
+  fi
+}
+
+run_codex() {
+  local noninteractive="$1"
+  local prompt_text="$2"
+  if [[ -n "$CONTAINER_NAME" ]]; then
+    set_container_exec_flags "$([[ "$noninteractive" == "1" ]] && echo 0 || echo 1)"
+    if [[ "$noninteractive" == "1" ]]; then
+      container_exec codex "${PERM_CODEX_FLAGS[@]}" exec "$prompt_text"
+    else
+      container_exec codex "${PERM_CODEX_FLAGS[@]}" "$prompt_text"
+    fi
+  else
+    if [[ "$noninteractive" == "1" ]]; then
+      codex "${PERM_CODEX_FLAGS[@]}" exec "$prompt_text"
+    else
+      codex "${PERM_CODEX_FLAGS[@]}" "$prompt_text"
+    fi
+  fi
+}
+
+run_claude() {
+  local noninteractive="$1"
+  local prompt_text="$2"
+  if [[ -n "$CONTAINER_NAME" ]]; then
+    set_container_exec_flags "$([[ "$noninteractive" == "1" ]] && echo 0 || echo 1)"
+    if [[ "$noninteractive" == "1" ]]; then
+      container_exec claude "${PERM_CLAUDE_FLAGS[@]}" -p "$prompt_text"
+    else
+      container_exec bash -c 'trap "exit 130" INT; exec claude "$@"' _ "${PERM_CLAUDE_FLAGS[@]}" "$prompt_text"
+    fi
+  else
+    if [[ "$noninteractive" == "1" ]]; then
+      claude "${PERM_CLAUDE_FLAGS[@]}" -p "$prompt_text"
+    else
+      bash -c 'trap "exit 130" INT; exec claude "$@"' _ "${PERM_CLAUDE_FLAGS[@]}" "$prompt_text"
+    fi
+  fi
+}
+
 # Main loop - iterate through workflow phases
 while :; do
   PASS=$((PASS + 1))
   PROMPT="$DESIGN_PROMPT"
   EXECUTE_MODE=0
+  BLOCKED_MODE=0
 
   if [[ $FREESTYLE -eq 1 ]]; then
     PROMPT="$PREPARE_PROMPT"
@@ -213,10 +256,17 @@ while :; do
       # Neither planning document exists - check if blocked before entering design mode
       BLOCKED_DIR="ralph/plans/blocked"
       if [[ -f "$BLOCKED_DIR/SPECIFICATION.md" || -f "$BLOCKED_DIR/EXECUTION_PLAN.md" ]]; then
-        echo "the agent is blocked"
-        exit 1
+        PROMPT="$BLOCKED_PROMPT"
+        BLOCKED_MODE=1
       fi
     fi
+  fi
+
+  set_permission_flags
+  if [[ $EXECUTE_MODE -eq 1 && $UNATTENDED -eq 1 ]]; then
+    NONINTERACTIVE=1
+  else
+    NONINTERACTIVE=0
   fi
 
   # Validate prompt file exists and provide helpful error message
@@ -232,6 +282,10 @@ while :; do
       echo "  cp ralph/prompts/plan.example.md ralph/prompts/plan.md"
     elif [[ "$PROMPT" == *"/execute.md" ]]; then
       echo "  cp ralph/prompts/execute.example.md ralph/prompts/execute.md"
+    elif [[ "$PROMPT" == *"/handoff.md" ]]; then
+      echo "  cp ralph/prompts/handoff.example.md ralph/prompts/handoff.md"
+    elif [[ "$PROMPT" == *"/blocked.md" ]]; then
+      echo "  Create ralph/prompts/blocked.md"
     elif [[ "$PROMPT" == *"/prepare.md" ]]; then
       echo "  cp ralph/prompts/prepare.example.md ralph/prompts/prepare.md"
     fi
@@ -240,63 +294,22 @@ while :; do
     exit 1
   fi
 
-  # Only run unattended during execution; design/plan require user input!
-  if [[ $EXECUTE_MODE -eq 1 && $UNATTENDED -eq 1 ]]; then
-    ensure_container_running
+  ensure_container_running
+  prompt_text="$(cat "$PROMPT")"
+  if [[ $NONINTERACTIVE -eq 1 ]]; then
     {
       printf '\n---\n\nPass %d:\n' "$PASS"
       if [[ $USE_CODEX -eq 1 ]]; then
-        prompt_text="$(cat "$PROMPT")"
-        if [[ -n "$CONTAINER_NAME" ]]; then
-          set_container_exec_flags 0
-          container_exec codex -a never --sandbox danger-full-access exec "$prompt_text"
-        else
-          codex -a never --sandbox danger-full-access exec "$prompt_text"
-        fi
+        run_codex 1 "$prompt_text"
       else
-        prompt_text="$(cat "$PROMPT")"
-        if [[ -n "$CONTAINER_NAME" ]]; then
-          set_container_exec_flags 0
-          container_exec claude -p --dangerously-skip-permissions "$prompt_text"
-        else
-          claude -p --dangerously-skip-permissions "$prompt_text"
-        fi
+        run_claude 1 "$prompt_text"
       fi
     } >> "$OUTPUT_LOG" 2> "$ERROR_LOG"
   else
-    ensure_container_running
     if [[ $USE_CODEX -eq 1 ]]; then
-      prompt_text="$(cat "$PROMPT")"
-      if [[ -n "$CONTAINER_NAME" ]]; then
-        set_container_exec_flags 1
-        if [[ $YOLO -eq 1 ]]; then
-          container_exec codex -a never --sandbox danger-full-access "$prompt_text" 2> "$ERROR_LOG"
-        else
-          container_exec codex "$prompt_text" 2> "$ERROR_LOG"
-        fi
-      else
-        if [[ $YOLO -eq 1 ]]; then
-          codex -a never --sandbox danger-full-access "$prompt_text" 2> "$ERROR_LOG"
-        else
-          codex "$prompt_text" 2> "$ERROR_LOG"
-        fi
-      fi
+      run_codex 0 "$prompt_text" 2> "$ERROR_LOG"
     else
-      prompt_text="$(cat "$PROMPT")"
-      if [[ -n "$CONTAINER_NAME" ]]; then
-        set_container_exec_flags 1
-        if [[ $YOLO -eq 1 ]]; then
-          container_exec bash -c 'trap "exit 130" INT; exec claude --dangerously-skip-permissions "$@"' _ "$prompt_text" 2> "$ERROR_LOG"
-        else
-          container_exec bash -c 'trap "exit 130" INT; exec claude "$@"' _ "$prompt_text" 2> "$ERROR_LOG"
-        fi
-      else
-        if [[ $YOLO -eq 1 ]]; then
-          bash -c 'trap "exit 130" INT; exec claude --dangerously-skip-permissions "$@"' _ "$prompt_text" 2> "$ERROR_LOG"
-        else
-          bash -c 'trap "exit 130" INT; exec claude "$@"' _ "$prompt_text" 2> "$ERROR_LOG"
-        fi
-      fi
+      run_claude 0 "$prompt_text" 2> "$ERROR_LOG"
     fi
   fi
   status=$?
@@ -312,13 +325,6 @@ while :; do
     fi
     cat "$ERROR_LOG"
     exit 1
-  fi
-
-  if [[ -n "$CALLBACK" ]]; then
-    if ! "$CALLBACK"; then
-      echo "Callback failed: $CALLBACK" >&2
-      exit 1
-    fi
   fi
 
   # Run handoff (execute phase only, and only if planning docs still exist or in freestyle mode)
@@ -342,11 +348,7 @@ while :; do
                   awk -F 'session id:' '/session id:/ {id=$2} END {gsub(/^[[:space:]]+|[[:space:]]+$/,"",id); print id}' "$ERROR_LOG"
                 )"
               fi
-              if [[ $YOLO -eq 1 || $UNATTENDED -eq 1 ]]; then
-                handoff_codex_flags=(-a never --sandbox danger-full-access)
-              else
-                handoff_codex_flags=()
-              fi
+              handoff_codex_flags=("${PERM_CODEX_FLAGS[@]}")
               if [[ -n "$CONTAINER_NAME" ]]; then
                 set_container_exec_flags "$handoff_require_tty"
                 if [[ -n "$codex_session_id" ]]; then
@@ -362,11 +364,7 @@ while :; do
                 fi
               fi
             else
-              if [[ $YOLO -eq 1 || $UNATTENDED -eq 1 ]]; then
-                handoff_claude_flags=(--dangerously-skip-permissions)
-              else
-                handoff_claude_flags=()
-              fi
+              handoff_claude_flags=("${PERM_CLAUDE_FLAGS[@]}")
               if [[ -n "$CONTAINER_NAME" ]]; then
                 set_container_exec_flags "$handoff_require_tty"
                 container_exec claude "${handoff_claude_flags[@]}" --continue "$handoff_text" || echo "Warning: Handoff failed (non-fatal)"
@@ -384,11 +382,7 @@ while :; do
                 awk -F 'session id:' '/session id:/ {id=$2} END {gsub(/^[[:space:]]+|[[:space:]]+$/,"",id); print id}' "$ERROR_LOG"
               )"
             fi
-            if [[ $YOLO -eq 1 || $UNATTENDED -eq 1 ]]; then
-              handoff_codex_flags=(-a never --sandbox danger-full-access)
-            else
-              handoff_codex_flags=()
-            fi
+            handoff_codex_flags=("${PERM_CODEX_FLAGS[@]}")
             if [[ -n "$CONTAINER_NAME" ]]; then
               set_container_exec_flags "$handoff_require_tty"
               if [[ -n "$codex_session_id" ]]; then
@@ -404,11 +398,7 @@ while :; do
               fi
             fi
           else
-            if [[ $YOLO -eq 1 || $UNATTENDED -eq 1 ]]; then
-              handoff_claude_flags=(--dangerously-skip-permissions)
-            else
-              handoff_claude_flags=()
-            fi
+            handoff_claude_flags=("${PERM_CLAUDE_FLAGS[@]}")
             if [[ -n "$CONTAINER_NAME" ]]; then
               set_container_exec_flags "$handoff_require_tty"
               container_exec claude "${handoff_claude_flags[@]}" --continue "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
@@ -418,6 +408,14 @@ while :; do
           fi
         fi
       fi
+    fi
+  fi
+
+  # run callback if specified
+  if [[ -n "$CALLBACK" ]]; then
+    if ! "$CALLBACK"; then
+      echo "Callback failed: $CALLBACK" >&2
+      exit 1
     fi
   fi
 done

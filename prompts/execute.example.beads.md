@@ -16,7 +16,7 @@ If you find a related ticket that is not closed in beads, but you find the work 
 
 If there is no work left to do on this plan, then check if the spec has been completely converted to a document (or set of documents) in the `docs/` folder describing the new state of this code.  If that hasn't been done, then doing so is your next task.
 
-If the plan is truly finished, all changes are documented and there is nothing left to do on this plan, delete both the `ralph/plans/SPECIFICATION.md` and the `ralph/plans/EXECUTION_PLAN.md` files, then report back to the user that there's nothing left to do and await further instructions.
+If the plan is truly finished, all changes are documented and there is nothing left to do on this plan, move both the `ralph/plans/SPECIFICATION.md` and the `ralph/plans/EXECUTION_PLAN.md` files to the `ralph/plans/archive/` folder, then report back to the user that there's nothing left to do and await further instructions.
 
 Assuming there still is work left to do to implement this spec, then do the most important thing to move the project forward.  Pick the one most important next task and do it.  You may use up to 10 subagents in any way you see fit.
 
