@@ -202,13 +202,13 @@ run_codex() {
     if [[ "$noninteractive" == "1" ]]; then
       container_exec codex "${PERM_CODEX_FLAGS[@]}" exec "$prompt_text"
     else
-      container_exec codex "${PERM_CODEX_FLAGS[@]}" "$prompt_text"
+      container_exec bash -c 'trap "exit 130" INT; exec codex "$@"' _ "${PERM_CODEX_FLAGS[@]}" "$prompt_text"
     fi
   else
     if [[ "$noninteractive" == "1" ]]; then
       codex "${PERM_CODEX_FLAGS[@]}" exec "$prompt_text"
     else
-      codex "${PERM_CODEX_FLAGS[@]}" "$prompt_text"
+      bash -c 'trap "exit 130" INT; exec codex "$@"' _ "${PERM_CODEX_FLAGS[@]}" "$prompt_text"
     fi
   fi
 }
