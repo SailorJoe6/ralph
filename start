@@ -355,6 +355,8 @@ while :; do
 
         if [[ $UNATTENDED -eq 1 ]]; then
           {
+            echo ""
+            echo "----------------"
             echo "Running handoff..."
             if [[ $USE_CODEX -eq 1 ]]; then
               codex_session_id=""
