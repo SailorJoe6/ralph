@@ -43,6 +43,8 @@ fi
 : "${CONTAINER_NAME:=}"
 : "${CONTAINER_RUNTIME:=docker}"
 : "${YOLO:=0}"
+: "${RESUME_MODE:=0}"
+: "${RESUME_SESSION:=}"
 
 # CONTAINER_WORKDIR defaults to /<basename> if using container
 # This will be set dynamically if --container is used without --workdir
@@ -98,6 +100,16 @@ while [[ $# -gt 0 ]]; do
       YOLO=1
       shift
       ;;
+    --resume)
+      RESUME_MODE=1
+      # Check if next arg exists and doesn't start with -
+      if [[ $# -ge 2 && ! "$2" =~ ^- ]]; then
+        RESUME_SESSION="$2"
+        shift 2
+      else
+        shift
+      fi
+      ;;
     -h|--help)
       echo "Usage: $0 [OPTIONS]"
       echo ""
@@ -106,6 +118,7 @@ while [[ $# -gt 0 ]]; do
       echo "  -f, --freestyle         Run execute loop with prepare prompt (skip spec/plan checks)"
       echo "  -y, --yolo              Enable full permissions (interactive unless -u)"
       echo "  --codex                 Use Codex instead of Claude"
+      echo "  --resume [guid]         Resume previous session (guid optional with --codex, forbidden for Claude)"
       echo "  --container <name>      Execute commands inside specified container"
       echo "  --workdir <path>        Container working directory (default: /<basename>)"
       echo "  --callback <script>     Run script after each pass"
@@ -125,6 +138,13 @@ done
 if [[ $FREESTYLE -eq 1 && $UNATTENDED -eq 1 ]]; then
   echo "Error: --freestyle and --unattended cannot be used together"
   echo "Freestyle mode requires interactive input and does not support unattended execution"
+  exit 2
+fi
+
+# Validate that --resume with session ID requires --codex
+if [[ -n "$RESUME_SESSION" && $USE_CODEX -eq 0 ]]; then
+  echo "Error: --resume with session ID requires --codex"
+  echo "For Claude, use --resume without a session ID (uses --continue)"
   exit 2
 fi
 
@@ -197,18 +217,28 @@ set_permission_flags() {
 run_codex() {
   local noninteractive="$1"
   local prompt_text="$2"
+
+  local resume_flags=()
+  if [[ $RESUME_MODE -eq 1 ]]; then
+    if [[ -n "$RESUME_SESSION" ]]; then
+      resume_flags=(--resume "$RESUME_SESSION")
+    else
+      resume_flags=(--resume)
+    fi
+  fi
+
   if [[ -n "$CONTAINER_NAME" ]]; then
     set_container_exec_flags "$([[ "$noninteractive" == "1" ]] && echo 0 || echo 1)"
     if [[ "$noninteractive" == "1" ]]; then
-      container_exec codex "${PERM_CODEX_FLAGS[@]}" exec "$prompt_text"
+      container_exec codex "${PERM_CODEX_FLAGS[@]}" "${resume_flags[@]}" exec "$prompt_text"
     else
-      container_exec bash -c 'trap "exit 130" INT; exec codex "$@"' _ "${PERM_CODEX_FLAGS[@]}" "$prompt_text"
+      container_exec bash -c 'trap "exit 130" INT; exec codex "$@"' _ "${PERM_CODEX_FLAGS[@]}" "${resume_flags[@]}" "$prompt_text"
     fi
   else
     if [[ "$noninteractive" == "1" ]]; then
-      codex "${PERM_CODEX_FLAGS[@]}" exec "$prompt_text"
+      codex "${PERM_CODEX_FLAGS[@]}" "${resume_flags[@]}" exec "$prompt_text"
     else
-      bash -c 'trap "exit 130" INT; exec codex "$@"' _ "${PERM_CODEX_FLAGS[@]}" "$prompt_text"
+      bash -c 'trap "exit 130" INT; exec codex "$@"' _ "${PERM_CODEX_FLAGS[@]}" "${resume_flags[@]}" "$prompt_text"
     fi
   fi
 }
@@ -216,18 +246,24 @@ run_codex() {
 run_claude() {
   local noninteractive="$1"
   local prompt_text="$2"
+
+  local resume_flags=()
+  if [[ $RESUME_MODE -eq 1 ]]; then
+    resume_flags=(--continue)
+  fi
+
   if [[ -n "$CONTAINER_NAME" ]]; then
     set_container_exec_flags "$([[ "$noninteractive" == "1" ]] && echo 0 || echo 1)"
     if [[ "$noninteractive" == "1" ]]; then
-      container_exec claude "${PERM_CLAUDE_FLAGS[@]}" -p "$prompt_text"
+      container_exec claude "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" -p "$prompt_text"
     else
-      container_exec bash -c 'trap "exit 130" INT; exec claude "$@"' _ "${PERM_CLAUDE_FLAGS[@]}" "$prompt_text"
+      container_exec bash -c 'trap "exit 130" INT; exec claude "$@"' _ "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" "$prompt_text"
     fi
   else
     if [[ "$noninteractive" == "1" ]]; then
-      claude "${PERM_CLAUDE_FLAGS[@]}" -p "$prompt_text"
+      claude "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" -p "$prompt_text"
     else
-      bash -c 'trap "exit 130" INT; exec claude "$@"' _ "${PERM_CLAUDE_FLAGS[@]}" "$prompt_text"
+      bash -c 'trap "exit 130" INT; exec claude "$@"' _ "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" "$prompt_text"
     fi
   fi
 }
