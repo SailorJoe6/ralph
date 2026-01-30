@@ -1,0 +1,186 @@
+#!/usr/bin/env bash
+
+# ralph/init - Initialize ralph in a project with AI assistance
+#
+# This script runs an AI agent (Claude or Codex) to set up ralph in a project:
+# - Adds ralph/ to .git/info/exclude
+# - Creates prompt files from examples
+# - Optionally sets up beads and .claude/commands symlinks
+
+set -e
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Load .env file if it exists (from ralph directory)
+if [[ -f "$SCRIPT_DIR/.env" ]]; then
+  # shellcheck disable=SC1090
+  source "$SCRIPT_DIR/.env"
+fi
+
+# Default flags
+USE_CODEX=0
+USE_BEADS=0
+SETUP_CLAUDE=0
+YOLO=0
+
+# Parse command-line arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --codex)
+      USE_CODEX=1
+      shift
+      ;;
+    --beads)
+      USE_BEADS=1
+      shift
+      ;;
+    --claude)
+      SETUP_CLAUDE=1
+      shift
+      ;;
+    -y|--yolo)
+      YOLO=1
+      shift
+      ;;
+    -h|--help)
+      echo "Usage: ralph/init [OPTIONS]"
+      echo ""
+      echo "Initialize ralph in a project with AI assistance."
+      echo ""
+      echo "Options:"
+      echo "  --codex      Use Codex instead of Claude"
+      echo "  --beads      Initialize beads (run 'bd init') and use .example.beads.md prompts"
+      echo "  --claude     Set up .claude/commands/ with symlinks to ralph prompts"
+      echo "  -y, --yolo   Enable full permissions without approval prompts"
+      echo "  -h, --help   Show this help message"
+      echo ""
+      echo "Examples:"
+      echo "  ralph/init                      # Basic setup with Claude"
+      echo "  ralph/init --beads --claude     # Full setup with beads and slash commands"
+      echo "  ralph/init --codex --yolo       # Use Codex with full permissions"
+      exit 0
+      ;;
+    *)
+      echo "Error: Unknown option: $1"
+      echo "Run 'ralph/init --help' for usage information"
+      exit 2
+      ;;
+  esac
+done
+
+# Build the prompt based on flags
+build_prompt() {
+  cat <<'PROMPT_HEADER'
+You are initializing ralph in a project. Complete the following tasks in order:
+
+## Task 1: Git Exclusion
+
+Check if the parent directory (one level up from the ralph folder) is a git repository.
+If it is, add `ralph/` to `.git/info/exclude` so ralph is not tracked by git.
+Do NOT use .gitignore (that would be visible upstream). Use .git/info/exclude which is local-only.
+
+If the line `ralph/` already exists in .git/info/exclude, skip this step.
+
+PROMPT_HEADER
+
+  if [[ $USE_BEADS -eq 1 ]]; then
+    cat <<'PROMPT_BEADS'
+## Task 2: Initialize Beads
+
+Run the command `bd init` to initialize beads in the project.
+Wait for the command to complete before proceeding.
+
+## Task 3: Create Prompt Files
+
+Create the ralph prompt files by copying from example templates.
+Use the `.example.beads.md` version wherever it exists, otherwise use `.example.md`.
+
+Run these copy commands:
+```
+cp ralph/prompts/design.example.md ralph/prompts/design.md
+cp ralph/prompts/plan.example.md ralph/prompts/plan.md
+cp ralph/prompts/execute.example.beads.md ralph/prompts/execute.md
+cp ralph/prompts/handoff.example.beads.md ralph/prompts/handoff.md
+cp ralph/prompts/prepare.example.md ralph/prompts/prepare.md
+```
+
+Only copy files that don't already exist. Skip any that are already present.
+
+PROMPT_BEADS
+  else
+    cat <<'PROMPT_NO_BEADS'
+## Task 2: Create Prompt Files
+
+Create the ralph prompt files by copying from the `.example.md` templates (not the beads versions).
+
+Run these copy commands:
+```
+cp ralph/prompts/design.example.md ralph/prompts/design.md
+cp ralph/prompts/plan.example.md ralph/prompts/plan.md
+cp ralph/prompts/execute.example.md ralph/prompts/execute.md
+cp ralph/prompts/handoff.example.md ralph/prompts/handoff.md
+cp ralph/prompts/prepare.example.md ralph/prompts/prepare.md
+```
+
+Only copy files that don't already exist. Skip any that are already present.
+
+PROMPT_NO_BEADS
+  fi
+
+  if [[ $SETUP_CLAUDE -eq 1 ]]; then
+    cat <<'PROMPT_CLAUDE'
+## Task 3: Set Up Claude Commands
+
+Set up slash command integration for Claude Code:
+
+1. Check if `.claude/` directory exists. If not, create it.
+2. Check if `.claude/commands/` directory exists. If not, create it.
+3. Create symlinks from `.claude/commands/` to each ralph prompt file:
+
+```
+ln -sf ../../ralph/prompts/design.md .claude/commands/design.md
+ln -sf ../../ralph/prompts/plan.md .claude/commands/plan.md
+ln -sf ../../ralph/prompts/execute.md .claude/commands/execute.md
+ln -sf ../../ralph/prompts/handoff.md .claude/commands/handoff.md
+ln -sf ../../ralph/prompts/prepare.md .claude/commands/prepare.md
+```
+
+Use `ln -sf` to force-create symlinks even if they already exist.
+
+PROMPT_CLAUDE
+  fi
+
+  cat <<'PROMPT_FOOTER'
+## Completion
+
+After completing all tasks, provide a brief summary of what was done.
+PROMPT_FOOTER
+}
+
+# Set permission flags
+if [[ $YOLO -eq 1 ]]; then
+  PERM_CODEX_FLAGS=(--dangerously-bypass-approvals-and-sandbox)
+  PERM_CLAUDE_FLAGS=(--dangerously-skip-permissions)
+else
+  PERM_CODEX_FLAGS=()
+  PERM_CLAUDE_FLAGS=()
+fi
+
+# Build the prompt
+PROMPT_TEXT="$(build_prompt)"
+
+# Run the appropriate AI agent
+if [[ $USE_CODEX -eq 1 ]]; then
+  if ! command -v codex >/dev/null 2>&1; then
+    echo "Error: codex not found in PATH" >&2
+    exit 1
+  fi
+  exec bash -c 'trap "exit 130" INT; exec codex "$@"' _ "${PERM_CODEX_FLAGS[@]}" "$PROMPT_TEXT"
+else
+  if ! command -v claude >/dev/null 2>&1; then
+    echo "Error: claude not found in PATH" >&2
+    exit 1
+  fi
+  exec bash -c 'trap "exit 130" INT; exec claude "$@"' _ "${PERM_CLAUDE_FLAGS[@]}" "$PROMPT_TEXT"
+fi
