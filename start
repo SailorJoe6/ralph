@@ -268,6 +268,12 @@ run_claude() {
   fi
 }
 
+# Notify user when entering unattended mode
+if [[ $UNATTENDED -eq 1 ]]; then
+  echo "--------"
+  echo "Entering unattended execution loop.  See logs for details"
+fi
+
 # Main loop - iterate through workflow phases
 while :; do
   PASS=$((PASS + 1))
