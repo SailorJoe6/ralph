@@ -354,6 +354,10 @@ while :; do
   ensure_container_running
   prompt_text="$(cat "$PROMPT")"
   if [[ $NONINTERACTIVE -eq 1 ]]; then
+    error_offset=0
+    if [[ -f "$ERROR_LOG" ]]; then
+      error_offset=$(wc -c < "$ERROR_LOG")
+    fi
     {
       printf '\n---\n\nPass %d:\n' "$PASS"
       if [[ $USE_CODEX -eq 1 ]]; then
@@ -370,6 +374,11 @@ while :; do
     fi
   fi
   status=$?
+  if [[ $NONINTERACTIVE -eq 1 && -f "$ERROR_LOG" ]]; then
+    if tail -c "+$((error_offset + 1))" "$ERROR_LOG" | grep -q "task interrupted"; then
+      exit 0
+    fi
+  fi
   if [[ $status -eq 130 ]]; then
     exit 0
   fi
@@ -442,19 +451,35 @@ while :; do
               )"
             fi
             handoff_codex_flags=("${PERM_CODEX_FLAGS[@]}")
+            handoff_status=0
+            error_offset=0
+            if [[ -f "$ERROR_LOG" ]]; then
+              error_offset=$(wc -c < "$ERROR_LOG")
+            fi
             if [[ -n "$CONTAINER_NAME" ]]; then
               set_container_exec_flags "$handoff_require_tty"
               if [[ -n "$codex_session_id" ]]; then
-                container_exec codex "${handoff_codex_flags[@]}" exec resume "$codex_session_id" "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+                container_exec bash -c 'trap "exit 130" INT; codex "$@"' _ "${handoff_codex_flags[@]}" exec resume "$codex_session_id" "$handoff_text" 2> >(tee -a "$ERROR_LOG" >&2)
               else
-                container_exec codex "${handoff_codex_flags[@]}" exec resume --last "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+                container_exec bash -c 'trap "exit 130" INT; codex "$@"' _ "${handoff_codex_flags[@]}" exec resume --last "$handoff_text" 2> >(tee -a "$ERROR_LOG" >&2)
               fi
             else
               if [[ -n "$codex_session_id" ]]; then
-                codex "${handoff_codex_flags[@]}" exec resume "$codex_session_id" "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+                bash -c 'trap "exit 130" INT; codex "$@"' _ "${handoff_codex_flags[@]}" exec resume "$codex_session_id" "$handoff_text" 2> >(tee -a "$ERROR_LOG" >&2)
               else
-                codex "${handoff_codex_flags[@]}" exec resume --last "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+                bash -c 'trap "exit 130" INT; codex "$@"' _ "${handoff_codex_flags[@]}" exec resume --last "$handoff_text" 2> >(tee -a "$ERROR_LOG" >&2)
               fi
+            fi
+            handoff_status=$?
+            stty sane 2>/dev/null  # Reset terminal in case codex left it in bad state
+            echo "DEBUG: codex exited with status $handoff_status" >&2
+            if [[ -f "$ERROR_LOG" ]]; then
+              if tail -c "+$((error_offset + 1))" "$ERROR_LOG" | grep -q "task interrupted"; then
+                exit 0
+              fi
+            fi
+            if [[ $handoff_status -ne 0 ]]; then
+              exit 0  # Exit cleanly on any non-zero (including SIGINT)
             fi
           else
             handoff_claude_flags=("${PERM_CLAUDE_FLAGS[@]}")
