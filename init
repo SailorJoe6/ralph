@@ -5,7 +5,7 @@
 # This script runs an AI agent (Claude or Codex) to set up ralph in a project:
 # - Adds ralph/ to .git/info/exclude
 # - Creates prompt files from examples
-# - Optionally sets up beads and .claude/commands symlinks
+# - Optionally sets up beads and .claude/.codex commands symlinks
 
 set -e
 
@@ -22,6 +22,7 @@ fi
 USE_CODEX=0
 USE_BEADS=0
 SETUP_CLAUDE=0
+SETUP_CODEX=0
 YOLO=0
 
 # Parse command-line arguments
@@ -29,6 +30,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --codex)
       USE_CODEX=1
+      SETUP_CODEX=1
       shift
       ;;
     --beads)
@@ -49,7 +51,7 @@ while [[ $# -gt 0 ]]; do
       echo "Initialize ralph in a project with AI assistance."
       echo ""
       echo "Options:"
-      echo "  --codex      Use Codex instead of Claude"
+      echo "  --codex      Use Codex instead of Claude, and set up .codex/commands/"
       echo "  --beads      Initialize beads (run 'bd init') and use .example.beads.md prompts"
       echo "  --claude     Set up .claude/commands/ with symlinks to ralph prompts"
       echo "  -y, --yolo   Enable full permissions without approval prompts"
@@ -57,8 +59,8 @@ while [[ $# -gt 0 ]]; do
       echo ""
       echo "Examples:"
       echo "  ralph/init                      # Basic setup with Claude"
-      echo "  ralph/init --beads --claude     # Full setup with beads and slash commands"
-      echo "  ralph/init --codex --yolo       # Use Codex with full permissions"
+      echo "  ralph/init --beads --claude     # Full setup with beads and Claude slash commands"
+      echo "  ralph/init --codex --yolo       # Use Codex with full permissions and Codex commands"
       exit 0
       ;;
     *)
@@ -102,7 +104,7 @@ cp ralph/prompts/design.example.md ralph/prompts/design.md
 cp ralph/prompts/plan.example.md ralph/prompts/plan.md
 cp ralph/prompts/execute.example.beads.md ralph/prompts/execute.md
 cp ralph/prompts/handoff.example.beads.md ralph/prompts/handoff.md
-cp ralph/prompts/prepare.example.md ralph/prompts/prepare.md
+cp ralph/prompts/prepare.example.beads.md ralph/prompts/prepare.md
 ```
 
 Only copy files that don't already exist. Skip any that are already present.
@@ -149,6 +151,29 @@ ln -sf ../../ralph/prompts/prepare.md .claude/commands/prepare.md
 Use `ln -sf` to force-create symlinks even if they already exist.
 
 PROMPT_CLAUDE
+  fi
+
+  if [[ $SETUP_CODEX -eq 1 ]]; then
+    cat <<'PROMPT_CODEX'
+## Task 4: Set Up Codex Commands
+
+Set up slash command integration for Codex CLI:
+
+1. Check if `.codex/` directory exists. If not, create it.
+2. Check if `.codex/commands/` directory exists. If not, create it.
+3. Create symlinks from `.codex/commands/` to each ralph prompt file:
+
+```
+ln -sf ../../ralph/prompts/design.md .codex/commands/design.md
+ln -sf ../../ralph/prompts/plan.md .codex/commands/plan.md
+ln -sf ../../ralph/prompts/execute.md .codex/commands/execute.md
+ln -sf ../../ralph/prompts/handoff.md .codex/commands/handoff.md
+ln -sf ../../ralph/prompts/prepare.md .codex/commands/prepare.md
+```
+
+Use `ln -sf` to force-create symlinks even if they already exist.
+
+PROMPT_CODEX
   fi
 
   cat <<'PROMPT_FOOTER'
