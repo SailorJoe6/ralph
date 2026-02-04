@@ -45,7 +45,7 @@ To maximize throughput, run SWE-bench evaluation in parallel with ongoing predic
 - Supports `--suite multilingual` and `--suite live-multilang`
 - Uses model-specific snapshot filenames to avoid collisions (safe for multiple concurrent models)
 - Defaults to `WORKERS=1` (override per run)
-- **Known issue (SWE-bench upstream)**: `swebench.harness.run_evaluation` ignores `--report_dir` and writes its report JSON to the current working directory. Our pipeline moves the report into `work/swebench/logs/.../eval/` as a workaround until we can patch SWE-bench.
+- **Known issue (SWE-bench upstream)**: `swebench.harness.run_evaluation` ignores `--report_dir` and writes its report JSON to the current working directory (the SWE-bench repo). Our status report script reads the summary report from that location until we can patch SWE-bench.
 
 **Recommended usage (multilingual):**
 ```bash
