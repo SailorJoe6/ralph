@@ -27,12 +27,6 @@ BLOCKED_PROMPT="ralph/prompts/blocked.md"
 # Log file locations (default to ralph/logs/ from the parent directory)
 : "${LOG_DIR:=ralph/logs}"
 : "${ERROR_LOG:=$LOG_DIR/ERROR_LOG.md}"
-
-# Backwards compatibility for legacy OUT_LOG env var
-if [[ -z "${OUTPUT_LOG+x}" && -n "${OUT_LOG:-}" ]]; then
-  OUTPUT_LOG="$OUT_LOG"
-fi
-
 : "${OUTPUT_LOG:=$LOG_DIR/OUTPUT_LOG.md}"
 
 # Default behavior flags
@@ -230,13 +224,13 @@ run_codex() {
   if [[ -n "$CONTAINER_NAME" ]]; then
     set_container_exec_flags "$([[ "$noninteractive" == "1" ]] && echo 0 || echo 1)"
     if [[ "$noninteractive" == "1" ]]; then
-      container_exec codex "${PERM_CODEX_FLAGS[@]}" "${resume_flags[@]}" exec "$prompt_text"
+      container_exec bash -c 'trap "exit 130" INT; codex "$@"' _ "${PERM_CODEX_FLAGS[@]}" "${resume_flags[@]}" exec "$prompt_text"
     else
       container_exec bash -c 'trap "exit 130" INT; exec codex "$@"' _ "${PERM_CODEX_FLAGS[@]}" "${resume_flags[@]}" "$prompt_text"
     fi
   else
     if [[ "$noninteractive" == "1" ]]; then
-      codex "${PERM_CODEX_FLAGS[@]}" "${resume_flags[@]}" exec "$prompt_text"
+      bash -c 'trap "exit 130" INT; codex "$@"' _ "${PERM_CODEX_FLAGS[@]}" "${resume_flags[@]}" exec "$prompt_text"
     else
       bash -c 'trap "exit 130" INT; exec codex "$@"' _ "${PERM_CODEX_FLAGS[@]}" "${resume_flags[@]}" "$prompt_text"
     fi
@@ -255,24 +249,18 @@ run_claude() {
   if [[ -n "$CONTAINER_NAME" ]]; then
     set_container_exec_flags "$([[ "$noninteractive" == "1" ]] && echo 0 || echo 1)"
     if [[ "$noninteractive" == "1" ]]; then
-      container_exec claude "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" -p "$prompt_text"
+      container_exec bash -c 'trap "exit 130" INT; claude "$@"' _ "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" -p "$prompt_text"
     else
       container_exec bash -c 'trap "exit 130" INT; exec claude "$@"' _ "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" "$prompt_text"
     fi
   else
     if [[ "$noninteractive" == "1" ]]; then
-      claude "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" -p "$prompt_text"
+      bash -c 'trap "exit 130" INT; claude "$@"' _ "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" -p "$prompt_text"
     else
       bash -c 'trap "exit 130" INT; exec claude "$@"' _ "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" "$prompt_text"
     fi
   fi
 }
-
-# Notify user when entering unattended mode
-if [[ $UNATTENDED -eq 1 ]]; then
-  echo "--------"
-  echo "Entering unattended execution loop.  See logs for details"
-fi
 
 # Main loop - iterate through workflow phases
 while :; do
@@ -281,6 +269,13 @@ while :; do
   EXECUTE_MODE=0
   BLOCKED_MODE=0
 
+  # Notify user when entering unattended mode
+  if [[ $UNATTENDED -eq 1 ]]; then
+    echo "--------"
+    echo "Entering unattended execution loop.  See logs for details"
+  fi
+
+  # Check for freestyle mode first since it overrides normal phase checks
   if [[ $FREESTYLE -eq 1 ]]; then
     PROMPT="$PREPARE_PROMPT"
     EXECUTE_MODE=1
@@ -355,8 +350,12 @@ while :; do
   prompt_text="$(cat "$PROMPT")"
   if [[ $NONINTERACTIVE -eq 1 ]]; then
     error_offset=0
+    output_offset=0
     if [[ -f "$ERROR_LOG" ]]; then
       error_offset=$(wc -c < "$ERROR_LOG")
+    fi
+    if [[ -f "$OUTPUT_LOG" ]]; then
+      output_offset=$(wc -c < "$OUTPUT_LOG")
     fi
     {
       printf '\n---\n\nPass %d:\n' "$PASS"
@@ -375,7 +374,12 @@ while :; do
   fi
   status=$?
   if [[ $NONINTERACTIVE -eq 1 && -f "$ERROR_LOG" ]]; then
-    if tail -c "+$((error_offset + 1))" "$ERROR_LOG" | grep -q "task interrupted"; then
+    if tail -c "+$((error_offset + 1))" "$ERROR_LOG" | grep -qi "task interrupted"; then
+      exit 0
+    fi
+  fi
+  if [[ $NONINTERACTIVE -eq 1 && -f "$OUTPUT_LOG" ]]; then
+    if tail -c "+$((output_offset + 1))" "$OUTPUT_LOG" | grep -qi "task interrupted"; then
       exit 0
     fi
   fi
