@@ -1,12 +1,6 @@
-# Permissions, Resume, And Safety Controls
+# Resume
 
-Ralph can elevate agent permissions and resume existing sessions for both Codex and Claude.
-
-**Permission Flags**
-- When `--yolo` or `--unattended` is set, Ralph adds:
-- Codex: `--dangerously-bypass-approvals-and-sandbox`
-- Claude: `--dangerously-skip-permissions`
-- Without those flags, no extra permission flags are passed.
+Ralph can resume existing AI sessions instead of starting fresh ones.
 
 **Resume Mode**
 - `--resume` enables resume behavior.
@@ -19,7 +13,3 @@ Ralph can elevate agent permissions and resume existing sessions for both Codex 
 - If no session ID is found, handoff falls back to `codex exec resume --last <prompt>`.
 - For Claude, handoff uses `claude --continue <prompt>`.
 - Codex session IDs are extracted from `ERROR_LOG` by searching for the latest `session id:` line.
-
-**Unattended Mode**
-- `--unattended` only affects execute and handoff phases and runs them non-interactively.
-- Freestyle mode cannot run unattended.

@@ -6,7 +6,8 @@
 - [configuration.md](configuration.md) - `.env` loading, environment variables, and defaults.
 - [prompts-and-plans.md](prompts-and-plans.md) - Prompt files, templates, planning docs, and blocked plans.
 - [containers.md](containers.md) - Container runtime behavior, workdir defaults, and TTY rules.
-- [permissions-resume.md](permissions-resume.md) - Permission flags, resume behavior, and handoff resuming.
+- [permissions.md](permissions.md) - Permission elevation and unattended safety controls.
+- [resume.md](resume.md) - Resuming existing AI sessions and handoff resume behavior.
 - [interrupts.md](interrupts.md) - Ctrl+C behavior in interactive and non-interactive modes.
 - [logging.md](logging.md) - Log files, unattended logging, and error capture.
 - [callbacks.md](callbacks.md) - Deterministic backpressure via post-pass validation scripts.
