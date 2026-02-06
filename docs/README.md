@@ -8,5 +8,6 @@
 - [containers.md](containers.md) - Container runtime behavior, workdir defaults, and TTY rules.
 - [permissions-resume.md](permissions-resume.md) - Permission flags, resume behavior, and handoff resuming.
 - [interrupts.md](interrupts.md) - Ctrl+C behavior in interactive and non-interactive modes.
-- [logging-and-callbacks.md](logging-and-callbacks.md) - Log files, unattended logging, and callbacks.
+- [logging.md](logging.md) - Log files, unattended logging, and error capture.
+- [callbacks.md](callbacks.md) - Deterministic backpressure via post-pass validation scripts.
 - [troubleshooting.md](troubleshooting.md) - Common errors and remediation steps.

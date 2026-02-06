@@ -105,6 +105,7 @@ cp ralph/prompts/plan.example.md ralph/prompts/plan.md
 cp ralph/prompts/execute.example.beads.md ralph/prompts/execute.md
 cp ralph/prompts/handoff.example.beads.md ralph/prompts/handoff.md
 cp ralph/prompts/prepare.example.beads.md ralph/prompts/prepare.md
+cp ralph/prompts/blocked.example.md ralph/prompts/blocked.md
 ```
 
 Only copy files that don't already exist. Skip any that are already present.
@@ -123,6 +124,7 @@ cp ralph/prompts/plan.example.md ralph/prompts/plan.md
 cp ralph/prompts/execute.example.md ralph/prompts/execute.md
 cp ralph/prompts/handoff.example.md ralph/prompts/handoff.md
 cp ralph/prompts/prepare.example.md ralph/prompts/prepare.md
+cp ralph/prompts/blocked.example.md ralph/prompts/blocked.md
 ```
 
 Only copy files that don't already exist. Skip any that are already present.

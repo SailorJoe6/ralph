@@ -11,13 +11,13 @@ Ralph's prompt files are hardcoded under `ralph/prompts/` and must be customized
 - `ralph/prompts/blocked.md`
 
 **Templates**
-- Non-beads templates live at `ralph/prompts/*.example.md`.
-- Beads-specific templates live at `ralph/prompts/*.example.beads.md` when available.
+- Non-beads example templates live at `ralph/prompts/*.example.md`.
+- Beads-specific example templates live at `ralph/prompts/*.example.beads.md` when available.
 - `ralph/init` copies these into place, skipping files that already exist.
 
 **Missing Prompt Behavior**
 - If the selected prompt file is missing, `ralph/start` exits with an error and prints the exact `cp` commands to create missing prompts.
-- The blocked prompt is not templated; create `ralph/prompts/blocked.md` manually.
+- The blocked prompt has no beads-specific variant; `ralph/init` copies `blocked.example.md` in both modes.
 
 **Planning Docs**
 - `SPECIFICATION.md` and `EXECUTION_PLAN.md` drive the design, plan, and execute phases.

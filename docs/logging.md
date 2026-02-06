@@ -1,4 +1,4 @@
-# Logging And Callbacks
+# Logging
 
 Ralph records error output consistently and captures full output in unattended mode.
 
@@ -16,8 +16,3 @@ Ralph records error output consistently and captures full output in unattended m
 - In unattended mode, Ralph writes a pass header to `OUTPUT_LOG` and appends agent output.
 - `ERROR_LOG` is overwritten per pass.
 - If the new log output contains "task interrupted", Ralph exits cleanly.
-
-**Callbacks**
-- `--callback <script>` runs after each pass.
-- The script must be executable and resolvable via `command -v`.
-- If the callback fails, Ralph exits with an error.
