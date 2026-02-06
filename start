@@ -128,11 +128,10 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Validate that --freestyle and --unattended are not used together
+# Freestyle + unattended: downgrade to yolo (elevated permissions, still interactive)
 if [[ $FREESTYLE -eq 1 && $UNATTENDED -eq 1 ]]; then
-  echo "Error: --freestyle and --unattended cannot be used together"
-  echo "Freestyle mode requires interactive input and does not support unattended execution"
-  exit 2
+  UNATTENDED=0
+  YOLO=1
 fi
 
 # Validate that --resume with session ID requires --codex

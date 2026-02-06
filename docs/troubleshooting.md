@@ -3,7 +3,7 @@
 Common errors and fixes.
 
 **Invalid Flag Combinations**
-- `--freestyle` with `--unattended` is not allowed. Remove one of the flags.
+- `--freestyle` with `--unattended` is not valid, but supported for convenience. Passing these two flags is equivilent to passing `--freestyle --yolo`.
 - `--resume <id>` without `--codex` is not allowed. Use `--resume` without an ID for Claude or add `--codex`.
 
 **Missing Prompts**
@@ -21,3 +21,7 @@ Common errors and fixes.
 
 **Planning Docs Mismatch**
 - `EXECUTION_PLAN.md` present without `SPECIFICATION.md` causes an error. Restore the spec or remove the plan.
+
+**Exiting Ralph**
+- Press CTRL+C repeatedly in rapid succession to exit Ralph completely. 
+- If that doesn't work, you can try CTRL+\ or exit the terminal session. 
