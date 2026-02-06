@@ -208,6 +208,40 @@ set_permission_flags() {
   fi
 }
 
+run_noninteractive_cmd() {
+  local pid
+  local target_pid
+  local previous_trap
+  previous_trap=$(trap -p INT)
+
+  if command -v setsid >/dev/null 2>&1; then
+    setsid "$@" &
+    pid=$!
+    target_pid="-$pid"
+  else
+    "$@" &
+    pid=$!
+    target_pid="$pid"
+    local pgid
+    pgid=$(ps -o pgid= "$pid" 2>/dev/null | tr -d ' ')
+    if [[ -n "$pgid" ]]; then
+      target_pid="-$pgid"
+    fi
+  fi
+
+  trap 'kill -INT -- "$target_pid" 2>/dev/null; sleep 1; kill -TERM -- "$target_pid" 2>/dev/null; sleep 1; kill -KILL -- "$target_pid" 2>/dev/null; exit 130' INT
+  wait "$pid"
+  local status=$?
+
+  if [[ -n "$previous_trap" ]]; then
+    eval "$previous_trap"
+  else
+    trap - INT
+  fi
+
+  return $status
+}
+
 run_codex() {
   local noninteractive="$1"
   local prompt_text="$2"
@@ -224,13 +258,13 @@ run_codex() {
   if [[ -n "$CONTAINER_NAME" ]]; then
     set_container_exec_flags "$([[ "$noninteractive" == "1" ]] && echo 0 || echo 1)"
     if [[ "$noninteractive" == "1" ]]; then
-      container_exec bash -c 'trap "exit 130" INT; codex "$@"' _ "${PERM_CODEX_FLAGS[@]}" "${resume_flags[@]}" exec "$prompt_text"
+      run_noninteractive_cmd "$CONTAINER_RUNTIME" exec "${CONTAINER_EXEC_FLAGS[@]}" -w "$CONTAINER_WORKDIR" "$CONTAINER_NAME" codex "${PERM_CODEX_FLAGS[@]}" "${resume_flags[@]}" exec "$prompt_text"
     else
       container_exec bash -c 'trap "exit 130" INT; exec codex "$@"' _ "${PERM_CODEX_FLAGS[@]}" "${resume_flags[@]}" "$prompt_text"
     fi
   else
     if [[ "$noninteractive" == "1" ]]; then
-      bash -c 'trap "exit 130" INT; codex "$@"' _ "${PERM_CODEX_FLAGS[@]}" "${resume_flags[@]}" exec "$prompt_text"
+      run_noninteractive_cmd codex "${PERM_CODEX_FLAGS[@]}" "${resume_flags[@]}" exec "$prompt_text"
     else
       bash -c 'trap "exit 130" INT; exec codex "$@"' _ "${PERM_CODEX_FLAGS[@]}" "${resume_flags[@]}" "$prompt_text"
     fi
@@ -249,13 +283,13 @@ run_claude() {
   if [[ -n "$CONTAINER_NAME" ]]; then
     set_container_exec_flags "$([[ "$noninteractive" == "1" ]] && echo 0 || echo 1)"
     if [[ "$noninteractive" == "1" ]]; then
-      container_exec bash -c 'trap "exit 130" INT; claude "$@"' _ "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" -p "$prompt_text"
+      run_noninteractive_cmd "$CONTAINER_RUNTIME" exec "${CONTAINER_EXEC_FLAGS[@]}" -w "$CONTAINER_WORKDIR" "$CONTAINER_NAME" claude "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" -p "$prompt_text"
     else
       container_exec bash -c 'trap "exit 130" INT; exec claude "$@"' _ "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" "$prompt_text"
     fi
   else
     if [[ "$noninteractive" == "1" ]]; then
-      bash -c 'trap "exit 130" INT; claude "$@"' _ "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" -p "$prompt_text"
+      run_noninteractive_cmd claude "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" -p "$prompt_text"
     else
       bash -c 'trap "exit 130" INT; exec claude "$@"' _ "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" "$prompt_text"
     fi
@@ -463,15 +497,15 @@ while :; do
             if [[ -n "$CONTAINER_NAME" ]]; then
               set_container_exec_flags "$handoff_require_tty"
               if [[ -n "$codex_session_id" ]]; then
-                container_exec bash -c 'trap "exit 130" INT; codex "$@"' _ "${handoff_codex_flags[@]}" exec resume "$codex_session_id" "$handoff_text" 2> >(tee -a "$ERROR_LOG" >&2)
+                run_noninteractive_cmd "$CONTAINER_RUNTIME" exec "${CONTAINER_EXEC_FLAGS[@]}" -w "$CONTAINER_WORKDIR" "$CONTAINER_NAME" codex "${handoff_codex_flags[@]}" exec resume "$codex_session_id" "$handoff_text" 2> >(tee -a "$ERROR_LOG" >&2)
               else
-                container_exec bash -c 'trap "exit 130" INT; codex "$@"' _ "${handoff_codex_flags[@]}" exec resume --last "$handoff_text" 2> >(tee -a "$ERROR_LOG" >&2)
+                run_noninteractive_cmd "$CONTAINER_RUNTIME" exec "${CONTAINER_EXEC_FLAGS[@]}" -w "$CONTAINER_WORKDIR" "$CONTAINER_NAME" codex "${handoff_codex_flags[@]}" exec resume --last "$handoff_text" 2> >(tee -a "$ERROR_LOG" >&2)
               fi
             else
               if [[ -n "$codex_session_id" ]]; then
-                bash -c 'trap "exit 130" INT; codex "$@"' _ "${handoff_codex_flags[@]}" exec resume "$codex_session_id" "$handoff_text" 2> >(tee -a "$ERROR_LOG" >&2)
+                run_noninteractive_cmd codex "${handoff_codex_flags[@]}" exec resume "$codex_session_id" "$handoff_text" 2> >(tee -a "$ERROR_LOG" >&2)
               else
-                bash -c 'trap "exit 130" INT; codex "$@"' _ "${handoff_codex_flags[@]}" exec resume --last "$handoff_text" 2> >(tee -a "$ERROR_LOG" >&2)
+                run_noninteractive_cmd codex "${handoff_codex_flags[@]}" exec resume --last "$handoff_text" 2> >(tee -a "$ERROR_LOG" >&2)
               fi
             fi
             handoff_status=$?
