@@ -104,10 +104,9 @@ Deploy Qwen3-Coder-Next-FP8 model on vLLM using the custom Spark container and v
 ### Status: **IN PROGRESS** ⏳
 
 **Current State**:
-- Evaluation running since 2026-02-10 21:10
-- 295 instances (all successfully built ARM64 images)
-- Output directory: `results/full-arm64-eval/`
-- Log file: `results/full-arm64-eval.log`
+- One successful test run (apache__druid-13704) to validate setup
+- 295 instances ready (all successfully built and tagged ARM64 images)
+- Next run output: `results/phase3/full-run/`
 - Expected duration: 49-98 hours (10-20 min per instance)
 
 ### Objective
@@ -140,9 +139,9 @@ Evaluate Qwen3-Coder-Next-FP8 on SWE-Bench Multilingual using the SWE-Agent fram
 **Outputs**:
 - Formatted report with summary metrics (pass rates, resolved instances)
 - Formatted report with detailed per-instance results
-- All JSON prediction files preserved in `results/full-arm64-eval/preds.json`
-- Individual trajectories in `results/full-arm64-eval/<instance-id>/`
-- All evaluation logs stored in `results/full-arm64-eval/`
+- All JSON prediction files preserved in `results/phase3/full-run/preds.json`
+- Individual trajectories in `results/phase3/full-run/<instance-id>/`
+- All evaluation logs stored in `results/phase3/full-run/`
 
 ### Next Steps After Completion
 
@@ -183,10 +182,12 @@ Evaluate Qwen3-Coder-Next-FP8 on the complete SWE-Bench Multilingual test slice 
 
 ```
 results/
-├── phase1/          # vLLM validation outputs and logs
-├── phase2/          # SWE-Bench default harness results
-├── phase3/          # SWE-Agent harness results and JSON predictions
-└── phase4/          # mini-SWE-agent harness results (optional)
+├── phase1/                    # vLLM validation outputs and logs
+├── phase2/                    # SWE-Bench default harness results (skipped)
+├── phase3/                    # SWE-Agent harness results and JSON predictions
+│   ├── full-arm64-eval/       # Initial test run (apache__druid-13704 only)
+│   └── full-run/              # Complete 295-instance evaluation (pending)
+└── phase4/                    # mini-SWE-agent harness results (optional)
 ```
 
 ## Key References

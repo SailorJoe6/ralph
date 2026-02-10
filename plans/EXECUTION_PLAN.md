@@ -28,10 +28,11 @@
 | 3.0 | Rebuild SWE-bench images as ARM64 | **DONE** (295/300 ARM64 images built; 82 failed; see below) |
 | 3.1 | Install SWE-agent | **DONE** (SWE-agent 1.1.0 with ARM64 patches in venv) |
 | 3.2 | Configure SWE-agent for local vLLM | **DONE** (config/qwen3-vllm.yaml with ARM64 defaults) |
-| 3.3 | Run SWE-agent against SWE-bench Multilingual | **RUNNING** (295 instances, started in background with nohup) |
-| 3.4 | Evaluate predictions | TODO |
-| 3.5 | Generate reports and preserve artifacts | TODO |
-| 3.6 | Troubleshoot and fix failed ARM64 container builds | TODO (82 instances failed) |
+| 3.3 | Tag ARM64 images for SWE-agent | **DONE** (all 295 images tagged) |
+| 3.4 | Run SWE-agent against SWE-bench Multilingual | TODO (test-single completed, full run ready) |
+| 3.5 | Evaluate predictions | TODO |
+| 3.6 | Generate reports and preserve artifacts | TODO |
+| 3.7 | Troubleshoot and fix failed ARM64 container builds | TODO (82 instances failed) |
 | 4.1 | Install mini-SWE-agent | TODO (optional) |
 | 4.2 | Configure for local vLLM | TODO (optional) |
 | 4.3 | Run against SWE-bench Multilingual | TODO (optional) |
@@ -346,16 +347,61 @@ model:
 
 Exact configuration format will be determined from SWE-agent documentation during implementation.
 
-### Step 3.3: Run SWE-agent Against SWE-bench Multilingual ⏳ RUNNING
+### Step 3.3: Tag ARM64 Images for SWE-agent ✅ COMPLETE
 
-**Status**: RUNNING in background since 2026-02-10 21:10 (nohup)
+**CRITICAL**: Before running evaluation, ALL ARM64 images must be tagged with the format SWE-agent expects.
+
+**Why**: SWE-bench builds images as `sweb.eval.arm64.repo__instance:latest` but SWE-agent expects `docker.io/swebench/sweb.eval.arm64.repo_1776_instance:latest`
 
 **Command**:
 ```bash
-nohup bash -c 'source venv/bin/activate && sweagent run-batch \
+cd ~/Code/swebench-eval-next
+
+# Tag all 295 ARM64 images (fast, ~1 minute)
+for img in $(docker images --format "{{.Repository}}:{{.Tag}}" | grep "^sweb.eval.arm64"); do
+    REPO=$(echo "$img" | cut -d: -f1)
+    TAG=$(echo "$img" | cut -d: -f2)
+    INSTANCE_NAME=$(echo "$REPO" | sed 's/sweb.eval.arm64.//')
+    NEW_NAME="docker.io/swebench/sweb.eval.arm64.${INSTANCE_NAME//__/_1776_}"
+    docker tag "$img" "$NEW_NAME:$TAG"
+done
+```
+
+**Alternative**: Use provided script:
+```bash
+bash scripts/tag-arm64-images.sh
+```
+
+**Verify**: Check one image is tagged correctly:
+```bash
+docker images | grep "docker.io/swebench/sweb.eval.arm64" | head -5
+```
+
+### Step 3.4: Run SWE-agent Against SWE-bench Multilingual
+
+**Prerequisites**:
+- ✅ ARM64 images built (Step 3.0)
+- ✅ Images tagged for SWE-agent (Step 3.3)
+- ✅ vLLM server running
+- ✅ Config file ready
+
+**Output Directory Structure**:
+```
+results/phase3/
+├── test-single/           # Single instance test (apache__druid-13704 - completed)
+└── full-run/              # Full 295 instance evaluation (use this for full run)
+```
+
+**Command**:
+```bash
+cd ~/Code/swebench-eval-next
+source venv/bin/activate
+
+# Use nohup for multi-day process
+nohup sweagent run-batch \
   --config config/qwen3-vllm.yaml \
-  --output_dir results/full-arm64-eval' \
-  > results/full-arm64-eval.log 2>&1 &
+  --output_dir results/phase3/full-run \
+  > results/phase3/full-run.log 2>&1 &
 ```
 
 **Configuration**:
@@ -368,13 +414,13 @@ nohup bash -c 'source venv/bin/activate && sweagent run-batch \
 **Monitoring**:
 ```bash
 # View live progress
-tail -f results/full-arm64-eval.log
+tail -f results/phase3/full-run.log
 
 # Check running processes
 ps aux | grep sweagent
 
 # Count completed instances
-ls -1 results/full-arm64-eval/*/instance_id.traj 2>/dev/null | wc -l
+ls -1 results/phase3/full-run/*/instance_id.traj 2>/dev/null | wc -l
 ```
 
 **Expected Duration**: Multiple days (est. 10-20 min per instance × 295 instances = 49-98 hours)
@@ -383,9 +429,9 @@ ls -1 results/full-arm64-eval/*/instance_id.traj 2>/dev/null | wc -l
 - Running in sequential mode (single model request constraint)
 - SWE-agent has built-in resume logic for interruptions
 - Trajectories saved to individual instance directories
-- Predictions aggregated in `results/full-arm64-eval/preds.json`
+- Predictions aggregated in `results/phase3/full-run/preds.json`
 
-### Step 3.4: Evaluate Predictions
+### Step 3.5: Evaluate Predictions
 
 Use the SWE-bench evaluation harness to verify SWE-agent's generated patches:
 
@@ -397,7 +443,7 @@ python -m swebench.harness.run_evaluation \
   --run_id phase3-swe-agent
 ```
 
-### Step 3.5: Generate Reports and Preserve Artifacts
+### Step 3.6: Generate Reports and Preserve Artifacts
 
 Format results into summary and detailed reports. Preserve all JSON prediction files for later inspection.
 
@@ -405,7 +451,7 @@ Create or reuse report generation scripts. Document in `docs/README.md`.
 
 **Deliverables**: `results/phase3/` with predictions, JSON prediction files, evaluation logs, summary report, and detailed report
 
-### Step 3.6: Troubleshoot and Fix Failed ARM64 Container Builds
+### Step 3.7: Troubleshoot and Fix Failed ARM64 Container Builds
 
 **Objective**: Investigate and attempt to fix the 82 instances that failed to build as ARM64 containers.
 
