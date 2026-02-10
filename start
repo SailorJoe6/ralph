@@ -112,7 +112,7 @@ while [[ $# -gt 0 ]]; do
       echo "  -f, --freestyle         Run execute loop with prepare prompt (skip spec/plan checks)"
       echo "  -y, --yolo              Enable full permissions (interactive unless -u)"
       echo "  --codex                 Use Codex instead of Claude"
-      echo "  --resume [guid]         Resume previous session (guid optional with --codex, forbidden for Claude)"
+      echo "  --resume [guid]         Resume previous session (guid optional; uses --continue for Claude if omitted)"
       echo "  --container <name>      Execute commands inside specified container"
       echo "  --workdir <path>        Container working directory (default: /<basename>)"
       echo "  --callback <script>     Run script after each pass"
@@ -134,12 +134,7 @@ if [[ $FREESTYLE -eq 1 && $UNATTENDED -eq 1 ]]; then
   YOLO=1
 fi
 
-# Validate that --resume with session ID requires --codex
-if [[ -n "$RESUME_SESSION" && $USE_CODEX -eq 0 ]]; then
-  echo "Error: --resume with session ID requires --codex"
-  echo "For Claude, use --resume without a session ID (uses --continue)"
-  exit 2
-fi
+# (--resume with session ID is supported for both Claude and Codex)
 
 # Set default CONTAINER_WORKDIR if using container and not explicitly set
 if [[ -n "$CONTAINER_NAME" && -z "$CONTAINER_WORKDIR" ]]; then
@@ -276,7 +271,11 @@ run_claude() {
 
   local resume_flags=()
   if [[ $RESUME_MODE -eq 1 ]]; then
-    resume_flags=(--continue)
+    if [[ -n "$RESUME_SESSION" ]]; then
+      resume_flags=(--resume "$RESUME_SESSION")
+    else
+      resume_flags=(--continue)
+    fi
   fi
 
   if [[ -n "$CONTAINER_NAME" ]]; then
@@ -308,28 +307,75 @@ while :; do
     echo "Entering unattended execution loop.  See logs for details"
   fi
 
-  # Check for freestyle mode first since it overrides normal phase checks
-  if [[ $FREESTYLE -eq 1 ]]; then
-    PROMPT="$PREPARE_PROMPT"
-    EXECUTE_MODE=1
+  # Check for resume mode first - it overrides all prompt selection
+  if [[ $RESUME_MODE -eq 1 ]]; then
+    prompt_text="continue"
   else
-    # Determine which phase we're in based on planning documents
-    if [[ -f "$SPECIFICATION" && -f "$EXECUTION_PLAN" ]]; then
-      PROMPT="$EXECUTE_PROMPT"
+    # Check for freestyle mode first since it overrides normal phase checks
+    if [[ $FREESTYLE -eq 1 ]]; then
+      PROMPT="$PREPARE_PROMPT"
       EXECUTE_MODE=1
-    elif [[ -f "$SPECIFICATION" ]]; then
-      PROMPT="$PLAN_PROMPT"
-    elif [[ -f "$EXECUTION_PLAN" ]]; then
-      echo "Error: $EXECUTION_PLAN exists but $SPECIFICATION is missing."
-      exit 1
     else
-      # Neither planning document exists - check if blocked before entering design mode
-      BLOCKED_DIR="ralph/plans/blocked"
-      if [[ -f "$BLOCKED_DIR/SPECIFICATION.md" || -f "$BLOCKED_DIR/EXECUTION_PLAN.md" ]]; then
-        PROMPT="$BLOCKED_PROMPT"
-        BLOCKED_MODE=1
+      # Determine which phase we're in based on planning documents
+      if [[ -f "$SPECIFICATION" && -f "$EXECUTION_PLAN" ]]; then
+        PROMPT="$EXECUTE_PROMPT"
+        EXECUTE_MODE=1
+      elif [[ -f "$SPECIFICATION" ]]; then
+        PROMPT="$PLAN_PROMPT"
+      elif [[ -f "$EXECUTION_PLAN" ]]; then
+        echo "Error: $EXECUTION_PLAN exists but $SPECIFICATION is missing."
+        exit 1
+      else
+        # Neither planning document exists - check if blocked before entering design mode
+        BLOCKED_DIR="ralph/plans/blocked"
+        if [[ -f "$BLOCKED_DIR/SPECIFICATION.md" || -f "$BLOCKED_DIR/EXECUTION_PLAN.md" ]]; then
+          PROMPT="$BLOCKED_PROMPT"
+          BLOCKED_MODE=1
+        fi
       fi
     fi
+
+    # Validate prompt file exists and provide helpful error message
+    if [[ ! -f "$PROMPT" ]]; then
+      echo "Error: Prompt file not found: $PROMPT"
+      echo ""
+      echo "Prompts are project-specific and must be customized for your project."
+      echo "Copy from the example template(s):"
+      echo ""
+      missing_any=0
+      if [[ ! -f "$DESIGN_PROMPT" ]]; then
+        echo "  cp ralph/prompts/design.example.md ralph/prompts/design.md"
+        missing_any=1
+      fi
+      if [[ ! -f "$PLAN_PROMPT" ]]; then
+        echo "  cp ralph/prompts/plan.example.md ralph/prompts/plan.md"
+        missing_any=1
+      fi
+      if [[ ! -f "$EXECUTE_PROMPT" ]]; then
+        echo "  cp ralph/prompts/execute.example.md ralph/prompts/execute.md"
+        missing_any=1
+      fi
+      if [[ ! -f "$PREPARE_PROMPT" ]]; then
+        echo "  cp ralph/prompts/prepare.example.md ralph/prompts/prepare.md"
+        missing_any=1
+      fi
+      if [[ ! -f "$HANDOFF_PROMPT" ]]; then
+        echo "  cp ralph/prompts/handoff.example.md ralph/prompts/handoff.md"
+        missing_any=1
+      fi
+      if [[ ! -f "$BLOCKED_PROMPT" ]]; then
+        echo "  Create ralph/prompts/blocked.md"
+        missing_any=1
+      fi
+      if [[ $missing_any -eq 0 ]]; then
+        echo "  (all prompt files are present)"
+      fi
+      echo ""
+      echo "Then edit the prompt to reference your project's documentation."
+      exit 1
+    fi
+
+    prompt_text="$(cat "$PROMPT")"
   fi
 
   set_permission_flags
@@ -339,48 +385,7 @@ while :; do
     NONINTERACTIVE=0
   fi
 
-  # Validate prompt file exists and provide helpful error message
-  if [[ ! -f "$PROMPT" ]]; then
-    echo "Error: Prompt file not found: $PROMPT"
-    echo ""
-    echo "Prompts are project-specific and must be customized for your project."
-    echo "Copy from the example template(s):"
-    echo ""
-    missing_any=0
-    if [[ ! -f "$DESIGN_PROMPT" ]]; then
-      echo "  cp ralph/prompts/design.example.md ralph/prompts/design.md"
-      missing_any=1
-    fi
-    if [[ ! -f "$PLAN_PROMPT" ]]; then
-      echo "  cp ralph/prompts/plan.example.md ralph/prompts/plan.md"
-      missing_any=1
-    fi
-    if [[ ! -f "$EXECUTE_PROMPT" ]]; then
-      echo "  cp ralph/prompts/execute.example.md ralph/prompts/execute.md"
-      missing_any=1
-    fi
-    if [[ ! -f "$PREPARE_PROMPT" ]]; then
-      echo "  cp ralph/prompts/prepare.example.md ralph/prompts/prepare.md"
-      missing_any=1
-    fi
-    if [[ ! -f "$HANDOFF_PROMPT" ]]; then
-      echo "  cp ralph/prompts/handoff.example.md ralph/prompts/handoff.md"
-      missing_any=1
-    fi
-    if [[ ! -f "$BLOCKED_PROMPT" ]]; then
-      echo "  Create ralph/prompts/blocked.md"
-      missing_any=1
-    fi
-    if [[ $missing_any -eq 0 ]]; then
-      echo "  (all prompt files are present)"
-    fi
-    echo ""
-    echo "Then edit the prompt to reference your project's documentation."
-    exit 1
-  fi
-
   ensure_container_running
-  prompt_text="$(cat "$PROMPT")"
   if [[ $NONINTERACTIVE -eq 1 ]]; then
     error_offset=0
     output_offset=0

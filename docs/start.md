@@ -12,13 +12,14 @@ ralph/start [OPTIONS]
 - `-f, --freestyle` Run execute loop with the prepare prompt, skipping spec/plan checks.
 - `-y, --yolo` Enable full permissions while staying interactive unless combined with `--unattended`.
 - `--codex` Use Codex instead of Claude.
-- `--resume [guid]` Resume a previous session. For Codex, `guid` is optional. For Claude, `guid` is not allowed.
+- `--resume [guid]` Resume a previous session. When `guid` is provided, it is passed as `--resume <guid>` to both Claude and Codex. Without `guid`, Claude uses `--continue` and Codex uses `--resume`.
 - `--container <name>` Execute commands inside a container using the configured runtime.
 - `--workdir <path>` Set container working directory (defaults to `/<basename>` when `--container` is used).
 - `--callback <script>` Run a script after each pass.
 - `-h, --help` Show help.
 
 **Prompt And Phase Selection**
+- Resume mode always uses the prompt text "continue" (overrides all other prompt selection).
 - Freestyle mode always uses `ralph/prompts/prepare.md` and is treated as execute mode.
 - If both planning docs exist, Ralph uses `ralph/prompts/execute.md`.
 - If only `SPECIFICATION.md` exists, Ralph uses `ralph/prompts/plan.md`.
@@ -28,7 +29,7 @@ ralph/start [OPTIONS]
 
 **Validation Rules**
 - `--freestyle` cannot be combined with `--unattended`.
-- `--resume` with a session ID requires `--codex`.
+- `--resume` with a session ID works for both Claude (`--resume <guid>`) and Codex.
 - `--callback` must be executable and resolvable by `command -v`.
 - `--container` requires the configured container runtime to exist.
 
