@@ -25,14 +25,14 @@
 | 2.2 | Generate predictions (default harness) | **SKIPPED** (incompatible with custom vLLM) |
 | 2.3 | Run evaluation harness | **SKIPPED** |
 | 2.4 | Generate reports | **SKIPPED** |
-| 3.0 | Rebuild SWE-bench images as ARM64 | **DONE** (295/300 ARM64 images built; 82 failed; see below) |
+| 3.0 | Rebuild SWE-bench images as ARM64 | **DONE** (299/300 ARM64 images built; 1 unfixable) |
 | 3.1 | Install SWE-agent | **DONE** (SWE-agent 1.1.0 with ARM64 patches in venv) |
 | 3.2 | Configure SWE-agent for local vLLM | **DONE** (config/qwen3-vllm.yaml with ARM64 defaults) |
 | 3.3 | Tag ARM64 images for SWE-agent | **DONE** (all 295 images tagged) |
 | 3.4 | Run SWE-agent against SWE-bench Multilingual | TODO (test-single completed, full run ready) |
 | 3.5 | Evaluate predictions | TODO |
 | 3.6 | Generate reports and preserve artifacts | TODO |
-| 3.7 | Troubleshoot and fix failed ARM64 container builds | TODO (82 instances failed) |
+| 3.7 | Troubleshoot and fix failed ARM64 container builds | **DONE** (5 fixed, 1 unfixable) |
 | 4.1 | Install mini-SWE-agent | TODO (optional) |
 | 4.2 | Configure for local vLLM | TODO (optional) |
 | 4.3 | Run against SWE-bench Multilingual | TODO (optional) |
@@ -82,18 +82,15 @@
 3. **Compilation issues**: ARM64-specific compiler errors or missing platform support
 
 **Impact**:
-- Evaluation can proceed with 295 working instances (sufficient sample size)
-- Results will exclude 82 instances from final benchmark
-- Coverage maintained across all major languages
+- **Evaluation running** with 299/300 instances (7 completed as of 2026-02-11)
+- Only 1 instance excluded: `tokio-rs__tokio-4384` (upstream Cargo.lock issue)
+- Full coverage across all major languages maintained
 
-**Next Steps** (Step 3.6):
-1. Analyze build logs for each failed instance
-2. Categorize failures by root cause
-3. Attempt fixes for common issues (missing packages, build script patches)
-4. Document known ARM64 incompatibilities
-5. Rebuild fixed instances
-
-See `missing_instances.txt` for complete list of failed instance IDs.
+**Current Status** (Step 3.4 in progress):
+- Output: `results/phase3/full-run/`
+- Progress: 7/299 instances (6 submitted, 1 exit_error)
+- Currently processing: `apache__lucene-12196`
+- Estimated completion: ~49-98 hours from start (2026-02-10 21:10)
 
 ---
 
@@ -453,54 +450,53 @@ Create or reuse report generation scripts. Document in `docs/README.md`.
 
 ### Step 3.7: Troubleshoot and Fix Failed ARM64 Container Builds
 
-**Objective**: Investigate and attempt to fix the 82 instances that failed to build as ARM64 containers.
+**Status**: **DONE** - 82 → 6 → 1 unfixable instance
 
-**Approach**:
+**Resolution Summary**:
+- Initial 82 failures were from stale `missing_instances.txt` (early build attempts)
+- Only 6 instances truly failed after full build completion
+- Fixed 5 preactjs instances (node-gyp Python dependency)
+- 1 unfixable: `tokio-rs__tokio-4384` (upstream Cargo.lock mismatch)
+- **Final: 299/300 ARM64 images built**
 
-1. **Analyze Build Logs**:
-   ```bash
-   # Review logs for each failed instance
-   for instance in $(cat missing_instances.txt); do
-     echo "=== $instance ==="
-     cat logs/build_images/instances/sweb.eval.arm64.${instance//__/_1776_}__latest/build_image.log | tail -50
-   done
-   ```
+**Root Cause Analysis**:
 
-2. **Categorize Failures by Root Cause**:
-   - Missing ARM64 packages (apt/npm/cargo/pip)
-   - Hardcoded x86_64 architecture in build scripts
-   - ARM64-specific compilation errors
-   - Unsupported dependencies on ARM64 platform
-   - Build script bugs (not architecture-related)
+1. **Preactjs instances (5 fixed)**:
+   - `preactjs__preact-{2757,2896,2927,3010,3062}`
+   - **Issue**: `_DOCKERFILE_BASE_JS_2` template missing Python
+   - `iltorb` npm package requires `node-gyp` → needs Python to build
+   - Node 18+ pulls python3 as dependency; Node 16 does not
+   - **Fix**: Added `python3 python3-dev` to apt install in template
+   - **Commits**: SWE-bench fork `ce4ce87`, `0cc4389`
 
-3. **Attempt Common Fixes**:
-   - **Missing packages**: Find ARM64 equivalents or alternatives
-   - **Hardcoded arch**: Patch build scripts to detect and adapt to ARM64
-   - **Compilation errors**: Add ARM64-specific compiler flags or patches
-   - **Dependencies**: Replace with ARM64-compatible versions
+2. **tokio-rs/tokio-4384 (unfixable)**:
+   - Cargo.lock mismatch with `--locked` flag
+   - Upstream SWE-bench dataset issue (not ARM64-specific)
+   - Cannot fix without modifying test data
 
-4. **Document ARM64 Incompatibilities**:
-   - Create `docs/arm64-support/INCOMPATIBILITIES.md`
-   - List instances that cannot be fixed (fundamental ARM64 limitations)
-   - Document workarounds attempted and results
+**Commands Used**:
+```bash
+# Delete broken env image to force rebuild
+docker rmi sweb.env.js.arm64.e48de95e424f48bce473c9:latest
 
-5. **Rebuild Fixed Instances**:
-   ```bash
-   # Rebuild specific instances after fixes
-   python -m swebench.harness.prepare_images \
-     --dataset_name multilingual \
-     --split test \
-     --arch arm64 \
-     --filter "instance-id-regex" \
-     --num_workers 4
-   ```
+# Rebuild with fixed template
+python -m swebench.harness.prepare_images \
+  --dataset_name "swe-bench/SWE-bench_Multilingual" \
+  --split test \
+  --arch arm64 \
+  --tag latest \
+  --env_image_tag latest \
+  --instance_ids preactjs__preact-{2757,2896,2927,3010,3062}
 
-**Success Criteria**:
-- Reduce failed builds from 82 to < 20 instances
-- Document remaining incompatibilities
-- Update evaluation with newly fixed instances (optional re-run)
+# Tag for SWE-agent
+docker tag sweb.eval.arm64.preactjs__preact-2757:latest \
+  docker.io/swebench/sweb.eval.arm64.preactjs_1776_preact-2757:latest
+```
 
-**Priority**: Medium (295 instances sufficient for evaluation; fixes improve completeness)
+**Artifacts**:
+- `missing_instances.txt`: Now contains only `tokio-rs__tokio-4384`
+- Build logs: `logs/build_images/instances/sweb.eval.arm64.*/`
+- Env image Dockerfile: `logs/build_images/env/sweb.env.js.arm64.e48de95e424f48bce473c9__latest/Dockerfile`
 
 **Deliverables**:
 - Build log analysis summary
