@@ -10,6 +10,37 @@
 - Phase 3 (SWE-Agent) is the primary target for evaluation - default harness was for baseline comparison only
 - This path gets to meaningful results faster
 
+## 🔄 Workflow for Long-Running Processes
+
+**General Approach**:
+1. Launch long-running processes (predictions, evaluations) with `nohup`
+2. Verify process started successfully (wait 5 seconds, check with `ps`)
+3. Provide monitoring instructions to user (how to `tail -f` logs, check progress)
+4. Check for parallel work opportunities or determine if blocked
+5. If blocked, move plan and spec to `ralph/plans/blocked/` and stop
+
+**Long-Running Process Types**:
+- **Prediction Generation** (Step 3.4): SWE-agent batch run (~49-98 hours for 295 instances)
+- **Evaluation** (Step 3.5): SWE-bench harness evaluation (~variable, can run in parallel)
+
+**Parallelization Strategy**:
+- Predictions run sequentially (single model constraint)
+- Evaluations can run in parallel with predictions
+- As predictions complete, aggregate and evaluate them without waiting for all predictions
+- Track evaluated predictions to avoid re-evaluation
+- Multiple evaluation batches can run simultaneously (different instance sets)
+
+**Blocking Conditions**:
+- No predictions completed yet (wait for Step 3.4)
+- All completed predictions already evaluated (wait for more predictions)
+- All work complete (move to Step 3.6 or archive)
+
+**When Blocked**:
+1. Move `ralph/plans/SPECIFICATION.md` to `ralph/plans/blocked/`
+2. Move `ralph/plans/EXECUTION_PLAN.md` to `ralph/plans/blocked/`
+3. Update beads issues to reflect blocked status
+4. Report to user: "Project blocked, waiting for <process> to complete"
+
 ## Progress
 
 | Step | Description | Status |
@@ -390,26 +421,31 @@ results/phase3/
 └── full-run/              # Full 295 instance evaluation (use this for full run)
 ```
 
-**Command**:
+**Launch Command** (use nohup for multi-day process):
 ```bash
 cd ~/Code/swebench-eval-next
 source venv/bin/activate
 
-# Use nohup for multi-day process
 nohup sweagent run-batch \
   --config config/qwen3-vllm.yaml \
   --output_dir results/phase3/full-run \
   > results/phase3/full-run.log 2>&1 &
+
+# Verify it started (wait a few seconds)
+sleep 5
+ps aux | grep sweagent
+
+# Report back to user with monitoring instructions
 ```
 
 **Configuration**:
 - Config: `config/qwen3-vllm.yaml` (ARM64 defaults, multilingual dataset)
 - Instances: 295 (all successfully built ARM64 images)
 - Model: Qwen3-Coder-Next-FP8 via local vLLM (localhost:8888)
-- Output: `results/full-arm64-eval/`
-- Log: `results/full-arm64-eval.log`
+- Output: `results/phase3/full-run/`
+- Log: `results/phase3/full-run.log`
 
-**Monitoring**:
+**Monitoring** (provide to user, don't actively monitor):
 ```bash
 # View live progress
 tail -f results/phase3/full-run.log
@@ -417,37 +453,123 @@ tail -f results/phase3/full-run.log
 # Check running processes
 ps aux | grep sweagent
 
-# Count completed instances
-ls -1 results/phase3/full-run/*/instance_id.traj 2>/dev/null | wc -l
+# Use progress script
+./scripts/check-eval-progress.sh
 ```
 
 **Expected Duration**: Multiple days (est. 10-20 min per instance × 295 instances = 49-98 hours)
+
+**Workflow After Launch**:
+1. Verify process started successfully
+2. Provide monitoring instructions to user
+3. Check for other work (Step 3.5 on completed predictions, other beads tasks)
+4. If no parallel work available, move plan+spec to `ralph/plans/blocked/` and report blocked status
 
 **Notes**:
 - Running in sequential mode (single model request constraint)
 - SWE-agent has built-in resume logic for interruptions
 - Trajectories saved to individual instance directories
-- Predictions aggregated in `results/phase3/full-run/preds.json`
+- Predictions written to individual `.pred` files per instance
 
 ### Step 3.5: Evaluate Predictions
 
-Use the SWE-bench evaluation harness to verify SWE-agent's generated patches:
+**Can run in parallel** while Step 3.4 (prediction generation) is still running:
+- As predictions complete, aggregate them into JSONL format
+- Run evaluation on completed predictions only
+- Do NOT re-evaluate predictions that have already been evaluated
+- Can run multiple evaluation jobs in parallel (different instance sets)
 
+**Prerequisites**:
+- At least some predictions completed (`.pred` files exist)
+- ARM64 Docker images available
+
+**Aggregate Predictions**:
 ```bash
-python -m swebench.harness.run_evaluation \
-  --dataset_name SWE-bench/SWE-bench_Multilingual \
-  --predictions_path results/phase3/predictions/<predictions_file>.jsonl \
-  --max_workers 8 \
-  --run_id phase3-swe-agent
+# Create predictions file from completed instances
+find results/phase3/full-run -name "*.pred" -type f -exec cat {} \; > results/phase3/eval-batch-N/predictions.jsonl
+
+# Verify format
+wc -l results/phase3/eval-batch-N/predictions.jsonl
 ```
+
+**Launch Evaluation** (use nohup for long runs):
+```bash
+cd ~/Code/swebench-eval-next
+source venv/bin/activate
+
+nohup python -m swebench.harness.run_evaluation \
+  --dataset_name SWE-bench/SWE-bench_Multilingual \
+  --predictions_path results/phase3/eval-batch-N/predictions.jsonl \
+  --max_workers 4 \
+  --run_id eval-batch-N \
+  --arch arm64 \
+  --timeout 900 \
+  > results/phase3/eval-batch-N.log 2>&1 &
+
+# Verify it started
+sleep 5
+ps aux | grep run_evaluation
+
+# Report back to user with monitoring instructions
+```
+
+**Monitoring** (provide to user, don't actively monitor):
+```bash
+# View live progress
+tail -f results/phase3/eval-batch-N.log
+
+# Check running processes
+ps aux | grep run_evaluation
+
+# Check for report file
+ls -lh *eval-batch-N*.json
+```
+
+**Workflow After Launch**:
+1. Verify process started successfully
+2. Provide monitoring instructions to user
+3. Check for other work or determine if blocked
+4. If blocked, move plan+spec to `ralph/plans/blocked/`
+
+**Notes**:
+- Evaluation can run in parallel with prediction generation
+- Use different run IDs for each batch to avoid conflicts
+- Results written to `<model-name>.<run-id>.json` in current directory
+- Track which predictions have been evaluated to avoid duplication
 
 ### Step 3.6: Generate Reports and Preserve Artifacts
 
-Format results into summary and detailed reports. Preserve all JSON prediction files for later inspection.
+**Prerequisites**:
+- All predictions completed (Step 3.4)
+- All evaluations completed (Step 3.5)
 
-Create or reuse report generation scripts. Document in `docs/README.md`.
+**Tasks**:
+1. Aggregate all evaluation results into final report
+2. Generate summary statistics (success rate by language, project, etc.)
+3. Create detailed per-instance analysis
+4. Preserve all artifacts (predictions, evaluations, trajectories)
 
-**Deliverables**: `results/phase3/` with predictions, JSON prediction files, evaluation logs, summary report, and detailed report
+**Report Generation**:
+```bash
+# Aggregate all evaluation reports
+find . -name "*.test-eval-*.json" -o -name "*eval-batch-*.json"
+
+# Create summary report with statistics
+# (script to be created)
+```
+
+**Deliverables**:
+- `results/phase3/predictions.jsonl` - All predictions aggregated
+- `results/phase3/evaluation-final.json` - Final evaluation report
+- `results/phase3/SUMMARY.md` - Human-readable summary with statistics
+- `results/phase3/DETAILED.md` - Per-instance analysis
+- All trajectory files preserved in instance directories
+
+**Workflow After Completion**:
+1. Verify all reports generated successfully
+2. Update execution plan to mark Step 3.6 as complete
+3. Check if plan is fully complete
+4. If complete, move plan+spec to `ralph/plans/archive/`
 
 ### Step 3.7: Troubleshoot and Fix Failed ARM64 Container Builds
 
