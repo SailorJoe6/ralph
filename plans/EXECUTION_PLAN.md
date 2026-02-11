@@ -29,7 +29,7 @@
 | 3.1 | Install SWE-agent | **DONE** (SWE-agent 1.1.0 with ARM64 patches in venv) |
 | 3.2 | Configure SWE-agent for local vLLM | **DONE** (config/qwen3-vllm.yaml with ARM64 defaults) |
 | 3.3 | Tag ARM64 images for SWE-agent | **DONE** (all 295 images tagged) |
-| 3.4 | Run SWE-agent against SWE-bench Multilingual | TODO (test-single completed, full run ready) |
+| 3.4 | Run SWE-agent against SWE-bench Multilingual | **IN PROGRESS** (9/299 instances, 8 submitted, 1 exit_error) |
 | 3.5 | Evaluate predictions | TODO |
 | 3.6 | Generate reports and preserve artifacts | TODO |
 | 3.7 | Troubleshoot and fix failed ARM64 container builds | **DONE** (5 fixed, 1 unfixable) |
@@ -88,8 +88,9 @@
 
 **Current Status** (Step 3.4 in progress):
 - Output: `results/phase3/full-run/`
-- Progress: 7/299 instances (6 submitted, 1 exit_error)
-- Currently processing: `apache__lucene-12196`
+- Progress: 9/299 instances (8 submitted, 1 exit_error)
+- Last completed: `apache__lucene-12196` (2026-02-11 00:40)
+- Currently processing: `apache__lucene-12212` (started 2026-02-11 00:40)
 - Estimated completion: ~49-98 hours from start (2026-02-10 21:10)
 
 ---
