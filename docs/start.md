@@ -12,7 +12,7 @@ ralph/start [OPTIONS]
 - `-f, --freestyle` Run execute loop with the prepare prompt, skipping spec/plan checks.
 - `-y, --yolo` Enable full permissions while staying interactive unless combined with `--unattended`.
 - `--codex` Use Codex instead of Claude.
-- `--resume [guid]` Resume a previous session. For Codex, `guid` is optional. For Claude, `guid` is not allowed.
+- `--resume [guid]` Resume a previous session on the first pass only. `guid` is optional for both Codex and Claude.
 - `--container <name>` Execute commands inside a container using the configured runtime.
 - `--workdir <path>` Set container working directory (defaults to `/<basename>` when `--container` is used).
 - `--callback <script>` Run a script after each pass.
@@ -28,7 +28,6 @@ ralph/start [OPTIONS]
 
 **Validation Rules**
 - `--freestyle` cannot be combined with `--unattended`.
-- `--resume` with a session ID requires `--codex`.
 - `--callback` must be executable and resolvable by `command -v`.
 - `--container` requires the configured container runtime to exist.
 

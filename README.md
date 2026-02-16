@@ -277,7 +277,7 @@ The handoff phase runs automatically after each execute phase pass, but only if:
 - In freestyle mode, OR
 - Both the specification and execution plan still exist
 
-When using Codex, the handoff attempts to resume the exact session ID recorded in `ralph/logs/ERROR_LOG.md`. If no session ID is found, it falls back to `codex resume --last`.
+When using Codex, the handoff attempts to resume the exact session ID recorded in `ralph/logs/ERROR_LOG.md`. If no session ID is found, it falls back to `codex exec resume --last`.
 
 If the AI completes all work and deletes the planning documents as instructed in `execute.md`, the handoff phase will be skipped (since there's nothing left to hand off).
 

@@ -4,7 +4,7 @@ Common errors and fixes.
 
 **Invalid Flag Combinations**
 - `--freestyle` with `--unattended` is not valid, but supported for convenience. Passing these two flags is equivilent to passing `--freestyle --yolo`.
-- `--resume <id>` without `--codex` is not allowed. Use `--resume` without an ID for Claude or add `--codex`.
+- `--resume [id]` is valid with either tool. If you omit `id`, Ralph resumes the latest session (`codex ... --last` or `claude --continue`) on the first pass only.
 
 **Missing Prompts**
 - If a prompt file is missing, `ralph/start` prints the exact `cp` commands to create it.

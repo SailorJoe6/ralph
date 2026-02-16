@@ -44,6 +44,7 @@ BLOCKED_PROMPT="ralph/prompts/blocked.md"
 # This will be set dynamically if --container is used without --workdir
 
 PASS=0
+RESUME_PENDING=0
 
 if [[ -n "$LOG_DIR" ]]; then
   mkdir -p "$LOG_DIR"
@@ -112,7 +113,7 @@ while [[ $# -gt 0 ]]; do
       echo "  -f, --freestyle         Run execute loop with prepare prompt (skip spec/plan checks)"
       echo "  -y, --yolo              Enable full permissions (interactive unless -u)"
       echo "  --codex                 Use Codex instead of Claude"
-      echo "  --resume [guid]         Resume previous session (guid optional with --codex, forbidden for Claude)"
+      echo "  --resume [guid]         Resume previous session (optional session ID for Claude or Codex)"
       echo "  --container <name>      Execute commands inside specified container"
       echo "  --workdir <path>        Container working directory (default: /<basename>)"
       echo "  --callback <script>     Run script after each pass"
@@ -134,12 +135,8 @@ if [[ $FREESTYLE -eq 1 && $UNATTENDED -eq 1 ]]; then
   YOLO=1
 fi
 
-# Validate that --resume with session ID requires --codex
-if [[ -n "$RESUME_SESSION" && $USE_CODEX -eq 0 ]]; then
-  echo "Error: --resume with session ID requires --codex"
-  echo "For Claude, use --resume without a session ID (uses --continue)"
-  exit 2
-fi
+# Resume should only apply to the first pass of the main loop.
+RESUME_PENDING=$RESUME_MODE
 
 # Set default CONTAINER_WORKDIR if using container and not explicitly set
 if [[ -n "$CONTAINER_NAME" && -z "$CONTAINER_WORKDIR" ]]; then
@@ -245,27 +242,45 @@ run_codex() {
   local noninteractive="$1"
   local prompt_text="$2"
 
-  local resume_flags=()
-  if [[ $RESUME_MODE -eq 1 ]]; then
-    if [[ -n "$RESUME_SESSION" ]]; then
-      resume_flags=(--resume "$RESUME_SESSION")
+  local codex_cmd=(codex "${PERM_CODEX_FLAGS[@]}")
+  if [[ $RESUME_PENDING -eq 1 ]]; then
+    if [[ "$noninteractive" == "1" ]]; then
+      codex_cmd+=(exec resume)
+      if [[ -n "$RESUME_SESSION" ]]; then
+        codex_cmd+=("$RESUME_SESSION")
+      else
+        codex_cmd+=(--last)
+      fi
+      codex_cmd+=("$prompt_text")
     else
-      resume_flags=(--resume)
+      codex_cmd+=(resume)
+      if [[ -n "$RESUME_SESSION" ]]; then
+        codex_cmd+=("$RESUME_SESSION")
+      else
+        codex_cmd+=(--last)
+      fi
+      codex_cmd+=("$prompt_text")
+    fi
+  else
+    if [[ "$noninteractive" == "1" ]]; then
+      codex_cmd+=(exec "$prompt_text")
+    else
+      codex_cmd+=("$prompt_text")
     fi
   fi
 
   if [[ -n "$CONTAINER_NAME" ]]; then
     set_container_exec_flags "$([[ "$noninteractive" == "1" ]] && echo 0 || echo 1)"
     if [[ "$noninteractive" == "1" ]]; then
-      run_noninteractive_cmd "$CONTAINER_RUNTIME" exec "${CONTAINER_EXEC_FLAGS[@]}" -w "$CONTAINER_WORKDIR" "$CONTAINER_NAME" codex "${PERM_CODEX_FLAGS[@]}" "${resume_flags[@]}" exec "$prompt_text"
+      run_noninteractive_cmd "$CONTAINER_RUNTIME" exec "${CONTAINER_EXEC_FLAGS[@]}" -w "$CONTAINER_WORKDIR" "$CONTAINER_NAME" "${codex_cmd[@]}"
     else
-      container_exec bash -c 'trap "exit 130" INT; exec codex "$@"' _ "${PERM_CODEX_FLAGS[@]}" "${resume_flags[@]}" "$prompt_text"
+      container_exec bash -c 'trap "exit 130" INT; exec "$@"' _ "${codex_cmd[@]}"
     fi
   else
     if [[ "$noninteractive" == "1" ]]; then
-      run_noninteractive_cmd codex "${PERM_CODEX_FLAGS[@]}" "${resume_flags[@]}" exec "$prompt_text"
+      run_noninteractive_cmd "${codex_cmd[@]}"
     else
-      bash -c 'trap "exit 130" INT; exec codex "$@"' _ "${PERM_CODEX_FLAGS[@]}" "${resume_flags[@]}" "$prompt_text"
+      bash -c 'trap "exit 130" INT; exec "$@"' _ "${codex_cmd[@]}"
     fi
   fi
 }
@@ -275,8 +290,12 @@ run_claude() {
   local prompt_text="$2"
 
   local resume_flags=()
-  if [[ $RESUME_MODE -eq 1 ]]; then
-    resume_flags=(--continue)
+  if [[ $RESUME_PENDING -eq 1 ]]; then
+    if [[ -n "$RESUME_SESSION" ]]; then
+      resume_flags=(--resume "$RESUME_SESSION")
+    else
+      resume_flags=(--continue)
+    fi
   fi
 
   if [[ -n "$CONTAINER_NAME" ]]; then
@@ -406,6 +425,7 @@ while :; do
     fi
   fi
   status=$?
+  RESUME_PENDING=0
   if [[ $NONINTERACTIVE -eq 1 && -f "$ERROR_LOG" ]]; then
     if tail -c "+$((error_offset + 1))" "$ERROR_LOG" | grep -qi "task interrupted"; then
       exit 0
