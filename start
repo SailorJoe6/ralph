@@ -251,7 +251,6 @@ run_codex() {
       else
         codex_cmd+=(--last)
       fi
-      codex_cmd+=("$prompt_text")
     else
       codex_cmd+=(resume)
       if [[ -n "$RESUME_SESSION" ]]; then
@@ -259,7 +258,6 @@ run_codex() {
       else
         codex_cmd+=(--last)
       fi
-      codex_cmd+=("$prompt_text")
     fi
   else
     if [[ "$noninteractive" == "1" ]]; then
