@@ -4,6 +4,5 @@ When reporting the handoff, output only the following sections:
 - Status
 - Evidence (file/line, log name, command output, or other artifact)
 - Next Step
-- Beads Update
 
 Do not include narrative summaries or restate plan/spec content. Once you are ready to hand off, let me know and await further instructions.
