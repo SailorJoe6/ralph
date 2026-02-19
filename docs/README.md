@@ -1,8 +1,10 @@
 # Ralph Documentation Index
 
 - [overview.md](overview.md) - Workflow concepts, phases, planning docs, and blocked mode.
-- [init.md](init.md) - `ralph/init` CLI reference and initialization workflow.
-- [start.md](start.md) - `ralph/start` CLI reference, phase selection, and handoff behavior.
+- [install.md](install.md) - Global install layout, install script behavior, and update flow.
+- [init.md](init.md) - `ralph init` CLI reference and initialization workflow.
+- [start.md](start.md) - `ralph` runtime CLI reference, phase selection, and handoff behavior.
+- [upgrade.md](upgrade.md) - `ralph upgrade` CLI reference (migration command).
 - [configuration.md](configuration.md) - `.env` loading, environment variables, and defaults.
 - [prompts-and-plans.md](prompts-and-plans.md) - Prompt files, templates, planning docs, and blocked plans.
 - [containers.md](containers.md) - Container runtime behavior, workdir defaults, and TTY rules.

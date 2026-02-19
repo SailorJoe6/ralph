@@ -1,0 +1,548 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/config.sh
+source "$SCRIPT_DIR/lib/config.sh"
+
+PROJECT_ARG=""
+STEALTH=0
+
+LEGACY_ENV_FILE=""
+LEGACY_ROOT=""
+PROJECT_ROOT=""
+V2_ROOT=""
+
+PATH_KEYS=(SPECIFICATION EXECUTION_PLAN LOG_DIR ERROR_LOG OUTPUT_LOG)
+
+declare -A LEGACY_EFFECTIVE=()
+declare -A LEGACY_EXPLICIT=()
+declare -A MIGRATED_VALUES=()
+declare -A REWRITTEN_KEYS=()
+declare -A V2_DEFAULTS=(
+  [SPECIFICATION]=".ralph/plans/SPECIFICATION.md"
+  [EXECUTION_PLAN]=".ralph/plans/EXECUTION_PLAN.md"
+  [LOG_DIR]=".ralph/logs"
+  [ERROR_LOG]=".ralph/logs/ERROR_LOG.md"
+  [OUTPUT_LOG]=".ralph/logs/OUTPUT_LOG.md"
+)
+
+declare -A CREATED_TOP_LEVEL=()
+LEGACY_CLEANUP_REASON=""
+
+print_help() {
+  cat <<'EOF_HELP'
+Usage: ralph upgrade [OPTIONS]
+
+Upgrade a legacy V1 Ralph project layout (./ralph/) to V2 (.ralph/).
+
+Options:
+  --project <path>        Project root to upgrade (defaults to current directory)
+  --stealth               Add created folders to .git/info/exclude when available
+  -h, --help              Show this help message
+EOF_HELP
+}
+
+fail() {
+  echo "Error: $1" >&2
+  exit 1
+}
+
+warn() {
+  echo "Warning: $1" >&2
+}
+
+info() {
+  echo "$1"
+}
+
+mark_top_level_created() {
+  local rel_dir="$1"
+  CREATED_TOP_LEVEL["$rel_dir"]=1
+}
+
+ensure_top_level_dir() {
+  local rel_dir="$1"
+  local abs_dir="$PROJECT_ROOT/$rel_dir"
+  if [[ ! -d "$abs_dir" ]]; then
+    mkdir -p "$abs_dir"
+    mark_top_level_created "$rel_dir"
+  fi
+}
+
+add_stealth_excludes() {
+  local created_entries=()
+  local rel_dir=""
+  local git_exclude_path=""
+
+  for rel_dir in .ralph .beads .codex .claude; do
+    if [[ "${CREATED_TOP_LEVEL[$rel_dir]:-0}" == "1" ]]; then
+      created_entries+=("${rel_dir}/")
+    fi
+  done
+
+  if [[ "${#created_entries[@]}" -eq 0 ]]; then
+    return 0
+  fi
+
+  if ! command -v git >/dev/null 2>&1; then
+    warn "--stealth was requested, but git is not available; skipping .git/info/exclude updates"
+    return 0
+  fi
+
+  if ! git -C "$PROJECT_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    warn "--stealth was requested, but '$PROJECT_ROOT' is not inside a git work tree; skipping .git/info/exclude updates"
+    return 0
+  fi
+
+  git_exclude_path="$(git -C "$PROJECT_ROOT" rev-parse --path-format=absolute --git-path info/exclude 2>/dev/null || true)"
+  if [[ -z "$git_exclude_path" ]]; then
+    warn "--stealth was requested, but .git/info/exclude could not be resolved; skipping exclude updates"
+    return 0
+  fi
+
+  mkdir -p "$(dirname "$git_exclude_path")"
+  touch "$git_exclude_path"
+
+  for rel_dir in "${created_entries[@]}"; do
+    if ! grep -Fqx "$rel_dir" "$git_exclude_path"; then
+      printf '%s\n' "$rel_dir" >> "$git_exclude_path"
+    fi
+  done
+}
+
+path_points_into_legacy_root() {
+  local value="$1"
+  local resolved=""
+
+  resolved="$(ralph_resolve_against_root "$PROJECT_ROOT" "$value")"
+  if [[ "$resolved" == "$LEGACY_ROOT" || "$resolved" == "$LEGACY_ROOT/"* ]]; then
+    return 0
+  fi
+
+  return 1
+}
+
+capture_legacy_effective_paths() {
+  local key=""
+  local value=""
+
+  LEGACY_EFFECTIVE[SPECIFICATION]="ralph/plans/SPECIFICATION.md"
+  LEGACY_EFFECTIVE[EXECUTION_PLAN]="ralph/plans/EXECUTION_PLAN.md"
+  LEGACY_EFFECTIVE[LOG_DIR]="ralph/logs"
+  LEGACY_EXPLICIT[SPECIFICATION]=0
+  LEGACY_EXPLICIT[EXECUTION_PLAN]=0
+  LEGACY_EXPLICIT[LOG_DIR]=0
+  LEGACY_EXPLICIT[ERROR_LOG]=0
+  LEGACY_EXPLICIT[OUTPUT_LOG]=0
+
+  if [[ -f "$LEGACY_ENV_FILE" ]]; then
+    while IFS=$'\t' read -r key value; do
+      LEGACY_EFFECTIVE["$key"]="$value"
+      LEGACY_EXPLICIT["$key"]=1
+    done < <(
+      (
+        set +u
+        unset SPECIFICATION EXECUTION_PLAN LOG_DIR ERROR_LOG OUTPUT_LOG
+        # shellcheck disable=SC1090
+        source "$LEGACY_ENV_FILE"
+        for key in "${PATH_KEYS[@]}"; do
+          if [[ "${!key+x}" == "x" ]]; then
+            printf '%s\t%s\n' "$key" "${!key}"
+          fi
+        done
+      )
+    )
+  fi
+
+  if [[ "${LEGACY_EXPLICIT[ERROR_LOG]}" != "1" ]]; then
+    LEGACY_EFFECTIVE[ERROR_LOG]="${LEGACY_EFFECTIVE[LOG_DIR]}/ERROR_LOG.md"
+  fi
+
+  if [[ "${LEGACY_EXPLICIT[OUTPUT_LOG]}" != "1" ]]; then
+    LEGACY_EFFECTIVE[OUTPUT_LOG]="${LEGACY_EFFECTIVE[LOG_DIR]}/OUTPUT_LOG.md"
+  fi
+}
+
+compute_migrated_paths() {
+  local key=""
+  local current_value=""
+
+  for key in "${PATH_KEYS[@]}"; do
+    current_value="${LEGACY_EFFECTIVE[$key]}"
+    if path_points_into_legacy_root "$current_value"; then
+      MIGRATED_VALUES["$key"]="${V2_DEFAULTS[$key]}"
+      REWRITTEN_KEYS["$key"]=1
+      warn "Rewriting $key from '$current_value' to '${V2_DEFAULTS[$key]}' to allow legacy ./ralph removal"
+    else
+      MIGRATED_VALUES["$key"]="$current_value"
+      REWRITTEN_KEYS["$key"]=0
+    fi
+  done
+}
+
+append_shell_assignment() {
+  local file_path="$1"
+  local key="$2"
+  local value="$3"
+
+  printf '%s=%q\n' "$key" "$value" >> "$file_path"
+}
+
+write_migrated_env_file() {
+  local env_dest="$V2_ROOT/.env"
+  local key=""
+  local appended=0
+
+  if [[ -f "$LEGACY_ENV_FILE" ]]; then
+    cp "$LEGACY_ENV_FILE" "$env_dest"
+  else
+    : > "$env_dest"
+  fi
+
+  for key in "${PATH_KEYS[@]}"; do
+    if [[ "${REWRITTEN_KEYS[$key]}" == "1" ]]; then
+      if [[ "$appended" == "0" ]]; then
+        printf '\n# Added by ralph upgrade to redirect legacy ralph/ paths into .ralph/\n' >> "$env_dest"
+        appended=1
+      fi
+      append_shell_assignment "$env_dest" "$key" "${MIGRATED_VALUES[$key]}"
+    fi
+  done
+}
+
+resolved_path_from_setting() {
+  local value="$1"
+  ralph_resolve_against_root "$PROJECT_ROOT" "$value"
+}
+
+cleanup_empty_legacy_parents() {
+  local dir="$1"
+
+  while [[ "$dir" == "$LEGACY_ROOT"/* ]]; do
+    rmdir "$dir" 2>/dev/null || break
+    dir="$(dirname "$dir")"
+  done
+}
+
+remove_known_legacy_placeholder_files() {
+  local rel_path=""
+  local abs_path=""
+
+  # Ignore placeholder scaffold files that do not represent user content.
+  for rel_path in \
+    "ralph/.keep" \
+    "ralph/.gitkeep" \
+    "ralph/logs/.keep" \
+    "ralph/logs/.gitkeep" \
+    "ralph/plans/.keep" \
+    "ralph/plans/.gitkeep" \
+    "ralph/plans/archive/.keep" \
+    "ralph/plans/archive/.gitkeep" \
+    "ralph/plans/blocked/.keep" \
+    "ralph/plans/blocked/.gitkeep" \
+    "ralph/plans/future/.keep" \
+    "ralph/plans/future/.gitkeep" \
+    "ralph/prompts/.keep" \
+    "ralph/prompts/.gitkeep"
+  do
+    abs_path="$PROJECT_ROOT/$rel_path"
+    if [[ -f "$abs_path" ]]; then
+      rm -f "$abs_path"
+    fi
+  done
+
+  # Remove common macOS metadata files under legacy tree; these are never Ralph artifacts.
+  while IFS= read -r abs_path; do
+    rm -f "$abs_path"
+  done < <(find "$LEGACY_ROOT" -type f -name '.DS_Store' -print 2>/dev/null || true)
+}
+
+remove_empty_legacy_dirs() {
+  find "$LEGACY_ROOT" -mindepth 1 -depth -type d -empty -delete 2>/dev/null || true
+}
+
+rewrite_legacy_prompt_symlink() {
+  local link_path="$1"
+  local target_raw=""
+  local link_dir=""
+  local target_resolved=""
+  local prompt_file=""
+  local new_prompt_abs=""
+  local new_target_rel=""
+
+  if [[ ! -L "$link_path" ]]; then
+    return 0
+  fi
+
+  target_raw="$(readlink "$link_path")"
+  link_dir="$(dirname "$link_path")"
+
+  if [[ "$target_raw" == /* ]]; then
+    target_resolved="$(ralph_normalize_path "$target_raw")"
+  else
+    target_resolved="$(ralph_resolve_against_root "$link_dir" "$target_raw")"
+  fi
+
+  if [[ "$target_resolved" != "$LEGACY_ROOT/prompts/"* ]]; then
+    return 0
+  fi
+
+  prompt_file="$(basename "$target_resolved")"
+  new_prompt_abs="$V2_ROOT/prompts/$prompt_file"
+  if [[ ! -f "$new_prompt_abs" ]]; then
+    warn "Skipping symlink rewrite for '$link_path' because migrated prompt is missing: $new_prompt_abs"
+    return 0
+  fi
+
+  new_target_rel="../../.ralph/prompts/$prompt_file"
+  ln -sfn "$new_target_rel" "$link_path"
+  info "Rewrote command symlink: ${link_path#$PROJECT_ROOT/} -> $new_target_rel"
+}
+
+rewrite_legacy_prompt_symlinks_for_tool() {
+  local tool_dir="$1"
+  local commands_dir="$PROJECT_ROOT/$tool_dir/commands"
+  local link_path=""
+
+  if [[ ! -d "$commands_dir" ]]; then
+    return 0
+  fi
+
+  while IFS= read -r link_path; do
+    rewrite_legacy_prompt_symlink "$link_path"
+  done < <(find "$commands_dir" -maxdepth 1 -type l -print 2>/dev/null | sort || true)
+}
+
+rewrite_legacy_prompt_symlinks() {
+  rewrite_legacy_prompt_symlinks_for_tool ".claude"
+  rewrite_legacy_prompt_symlinks_for_tool ".codex"
+}
+
+legacy_repo_is_clean_for_cleanup() {
+  LEGACY_CLEANUP_REASON=""
+
+  if ! command -v git >/dev/null 2>&1; then
+    LEGACY_CLEANUP_REASON="git is not available to verify legacy repository cleanliness"
+    return 1
+  fi
+
+  if [[ ! -e "$LEGACY_ROOT/.git" ]]; then
+    LEGACY_CLEANUP_REASON="legacy folder is not a git repository"
+    return 1
+  fi
+
+  if ! git -C "$LEGACY_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    LEGACY_CLEANUP_REASON="legacy folder does not resolve to a valid git repository"
+    return 1
+  fi
+
+  if [[ -n "$(git -C "$LEGACY_ROOT" status --porcelain --untracked-files=all 2>/dev/null || true)" ]]; then
+    LEGACY_CLEANUP_REASON="legacy git repository is not clean"
+    return 1
+  fi
+
+  return 0
+}
+
+print_leftovers() {
+  local leftovers="$1"
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    echo "  - ${line#$PROJECT_ROOT/}" >&2
+  done <<< "$leftovers"
+}
+
+migrate_file_path() {
+  local src="$1"
+  local dest="$2"
+  local label="$3"
+
+  if [[ ! -e "$src" || -d "$src" ]]; then
+    return 0
+  fi
+
+  if [[ "$src" == "$dest" ]]; then
+    info "Preserved $label at $src"
+    return 0
+  fi
+
+  mkdir -p "$(dirname "$dest")"
+
+  if [[ -e "$dest" ]]; then
+    if cmp -s "$src" "$dest"; then
+      rm -f "$src"
+      info "Skipped $label; destination already had identical content: $dest"
+      cleanup_empty_legacy_parents "$(dirname "$src")"
+      return 0
+    fi
+
+    warn "Skipped $label migration because destination exists with different content: $dest"
+    return 0
+  fi
+
+  mv "$src" "$dest"
+  info "Migrated $label: $src -> $dest"
+  cleanup_empty_legacy_parents "$(dirname "$src")"
+}
+
+merge_directory_contents() {
+  local src="$1"
+  local dest="$2"
+  local label="$3"
+
+  if [[ ! -d "$src" ]]; then
+    return 0
+  fi
+
+  if [[ "$src" == "$dest" ]]; then
+    info "Preserved $label directory at $src"
+    return 0
+  fi
+
+  mkdir -p "$dest"
+  cp -a "$src"/. "$dest"/
+  rm -rf "$src"
+  info "Migrated $label directory: $src -> $dest"
+  cleanup_empty_legacy_parents "$(dirname "$src")"
+}
+
+migrate_known_artifacts() {
+  local source_spec=""
+  local source_plan=""
+  local source_log_dir=""
+  local source_error=""
+  local source_output=""
+  local dest_spec=""
+  local dest_plan=""
+  local dest_log_dir=""
+  local dest_error=""
+  local dest_output=""
+
+  local prompt_name=""
+
+  # Migrate only active prompt files used by runtime/init workflows.
+  for prompt_name in design.md plan.md execute.md handoff.md prepare.md blocked.md; do
+    migrate_file_path "$LEGACY_ROOT/prompts/$prompt_name" "$V2_ROOT/prompts/$prompt_name" "prompt $prompt_name"
+  done
+
+  # Plans are migrated recursively to preserve archive/blocked/future state.
+  merge_directory_contents "$LEGACY_ROOT/plans" "$V2_ROOT/plans" "plans"
+
+  source_spec="$(resolved_path_from_setting "${LEGACY_EFFECTIVE[SPECIFICATION]}")"
+  source_plan="$(resolved_path_from_setting "${LEGACY_EFFECTIVE[EXECUTION_PLAN]}")"
+  source_log_dir="$(resolved_path_from_setting "${LEGACY_EFFECTIVE[LOG_DIR]}")"
+  source_error="$(resolved_path_from_setting "${LEGACY_EFFECTIVE[ERROR_LOG]}")"
+  source_output="$(resolved_path_from_setting "${LEGACY_EFFECTIVE[OUTPUT_LOG]}")"
+
+  dest_spec="$(resolved_path_from_setting "${MIGRATED_VALUES[SPECIFICATION]}")"
+  dest_plan="$(resolved_path_from_setting "${MIGRATED_VALUES[EXECUTION_PLAN]}")"
+  dest_log_dir="$(resolved_path_from_setting "${MIGRATED_VALUES[LOG_DIR]}")"
+  dest_error="$(resolved_path_from_setting "${MIGRATED_VALUES[ERROR_LOG]}")"
+  dest_output="$(resolved_path_from_setting "${MIGRATED_VALUES[OUTPUT_LOG]}")"
+
+  migrate_file_path "$source_spec" "$dest_spec" "specification"
+  migrate_file_path "$source_plan" "$dest_plan" "execution plan"
+
+  migrate_file_path "$source_error" "$dest_error" "error log"
+  migrate_file_path "$source_output" "$dest_output" "output log"
+  merge_directory_contents "$source_log_dir" "$dest_log_dir" "logs"
+
+  rm -f "$LEGACY_ROOT/.env" "$LEGACY_ROOT/.env.example"
+  cleanup_empty_legacy_parents "$LEGACY_ROOT"
+}
+
+finalize_legacy_directory() {
+  local leftovers=""
+
+  remove_known_legacy_placeholder_files
+  remove_empty_legacy_dirs
+  cleanup_empty_legacy_parents "$LEGACY_ROOT"
+
+  leftovers="$(find "$LEGACY_ROOT" -mindepth 1 -print | sort || true)"
+  if [[ -n "$leftovers" ]]; then
+    if legacy_repo_is_clean_for_cleanup; then
+      rm -rf "$LEGACY_ROOT"
+      info "Removed legacy directory: $LEGACY_ROOT (legacy repo clean; removed residual non-migrated content)"
+      return 0
+    fi
+
+    echo "Error: Cannot remove legacy directory '$LEGACY_ROOT' because non-migrated content remains and $LEGACY_CLEANUP_REASON." >&2
+    echo "Residual content:" >&2
+    print_leftovers "$leftovers"
+    exit 1
+  fi
+
+  rmdir "$LEGACY_ROOT"
+  info "Removed legacy directory: $LEGACY_ROOT"
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --project)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "Error: --project requires a path argument" >&2
+        exit 2
+      fi
+      PROJECT_ARG="$2"
+      shift 2
+      ;;
+    --project=*)
+      PROJECT_ARG="${1#*=}"
+      if [[ -z "$PROJECT_ARG" ]]; then
+        echo "Error: --project requires a path argument" >&2
+        exit 2
+      fi
+      shift
+      ;;
+    --stealth)
+      STEALTH=1
+      shift
+      ;;
+    -h|--help)
+      print_help
+      exit 0
+      ;;
+    *)
+      echo "Error: Unknown option: $1" >&2
+      print_help >&2
+      exit 2
+      ;;
+  esac
+done
+
+PROJECT_ROOT="$(ralph_resolve_project_root "${PROJECT_ARG:-$(pwd)}")"
+LEGACY_ROOT="$PROJECT_ROOT/ralph"
+V2_ROOT="$PROJECT_ROOT/.ralph"
+LEGACY_ENV_FILE="$LEGACY_ROOT/.env"
+
+if [[ ! -d "$PROJECT_ROOT" ]]; then
+  fail "project root does not exist or is not a directory: $PROJECT_ROOT"
+fi
+
+if [[ ! -d "$LEGACY_ROOT" ]]; then
+  fail "legacy V1 Ralph folder not found at: $LEGACY_ROOT"
+fi
+
+if [[ -e "$V2_ROOT" ]]; then
+  fail "target V2 folder already exists at: $V2_ROOT"
+fi
+
+ensure_top_level_dir ".ralph"
+mkdir -p "$V2_ROOT/prompts" "$V2_ROOT/plans" "$V2_ROOT/logs"
+
+capture_legacy_effective_paths
+compute_migrated_paths
+write_migrated_env_file
+cp "$SCRIPT_DIR/.env.example" "$V2_ROOT/.env.example"
+
+migrate_known_artifacts
+rewrite_legacy_prompt_symlinks
+finalize_legacy_directory
+
+if [[ "$STEALTH" == "1" ]]; then
+  add_stealth_excludes
+fi
+
+info "Upgrade complete for project root: $PROJECT_ROOT"

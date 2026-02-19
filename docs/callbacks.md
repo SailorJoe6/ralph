@@ -9,7 +9,7 @@ Ralph's execute loop runs the AI repeatedly, but the AI can introduce regression
 ## Usage
 
 ```bash
-ralph/start --callback ./validate.sh
+ralph --callback ./validate.sh
 ```
 
 ## Requirements

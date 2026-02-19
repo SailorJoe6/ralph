@@ -28,7 +28,7 @@ docker run -d --name my-dev -v $(pwd):/workspace my-image sleep infinity
 docker exec -it my-dev claude
 
 # Now run Ralph against the container
-ralph/start --container my-dev --workdir /workspace --yolo
+ralph --container my-dev --workdir /workspace --yolo
 ```
 
 Do **not** start the container with a command that exits (like `bash -c "echo done"`) — Ralph needs the container to be running when it execs in.

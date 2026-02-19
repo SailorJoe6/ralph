@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE_ROOT="$SCRIPT_DIR"
+
+if [[ -z "${HOME:-}" ]]; then
+  echo "Error: HOME is not set" >&2
+  exit 1
+fi
+
+BIN_DIR="$HOME/.local/bin"
+RUNTIME_ROOT="$HOME/.local/share/ralph"
+USER_CONFIG_DIR="$HOME/.ralph"
+WRAPPER_PATH="$BIN_DIR/ralph"
+USER_ENV_EXAMPLE="$USER_CONFIG_DIR/.env.example"
+
+fail() {
+  echo "Error: $1" >&2
+  exit 1
+}
+
+info() {
+  echo "$1"
+}
+
+copy_runtime_tree() {
+  local staging_dir=""
+
+  if [[ "$SOURCE_ROOT" == "$RUNTIME_ROOT" ]]; then
+    info "Runtime already present at install location: $RUNTIME_ROOT"
+    return 0
+  fi
+
+  staging_dir="$(mktemp -d)"
+  trap 'rm -rf "$staging_dir"' RETURN
+
+  (
+    cd "$SOURCE_ROOT"
+    tar \
+      --exclude='.git' \
+      --exclude='.git/*' \
+      -cf - .
+  ) | (
+    cd "$staging_dir"
+    tar -xf -
+  )
+
+  rm -rf "$RUNTIME_ROOT"
+  mkdir -p "$(dirname "$RUNTIME_ROOT")"
+  mv "$staging_dir" "$RUNTIME_ROOT"
+  trap - RETURN
+}
+
+install_wrapper() {
+  local runtime_entry=""
+
+  runtime_entry="$(printf '%q' "$RUNTIME_ROOT/ralph")"
+
+  cat > "$WRAPPER_PATH" <<EOF_WRAPPER
+#!/usr/bin/env bash
+set -euo pipefail
+
+exec ${runtime_entry} "\$@"
+EOF_WRAPPER
+
+  chmod +x "$WRAPPER_PATH"
+}
+
+main() {
+  if [[ ! -x "$SOURCE_ROOT/ralph" ]]; then
+    fail "Expected executable missing from source tree: $SOURCE_ROOT/ralph"
+  fi
+
+  if [[ ! -f "$SOURCE_ROOT/.env.example" ]]; then
+    fail "Expected template missing from source tree: $SOURCE_ROOT/.env.example"
+  fi
+
+  mkdir -p "$BIN_DIR" "$USER_CONFIG_DIR"
+  copy_runtime_tree
+
+  if [[ ! -x "$RUNTIME_ROOT/ralph" ]]; then
+    fail "Installed runtime is missing executable: $RUNTIME_ROOT/ralph"
+  fi
+
+  install_wrapper
+  cp "$SOURCE_ROOT/.env.example" "$USER_ENV_EXAMPLE"
+
+  info "Installed Ralph command: $WRAPPER_PATH"
+  info "Installed Ralph runtime: $RUNTIME_ROOT"
+  info "Updated user config template: $USER_ENV_EXAMPLE"
+  info ""
+  info "Ralph does not create ~/.ralph/.env automatically."
+  info "To enable user-level defaults:"
+  info "  cp ~/.ralph/.env.example ~/.ralph/.env"
+  info "  # edit ~/.ralph/.env"
+  info ""
+  info "If 'ralph' is not found, add ~/.local/bin to your PATH."
+}
+
+main "$@"
