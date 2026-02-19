@@ -30,8 +30,9 @@ Clone ralph into your project and add it to the parent repo's git exclude file:
 # Clone ralph into your project
 git clone https://github.com/<username>/ralph.git ralph
 
-# Add to .git/info/exclude to keep ralph separate from your project
-echo "ralph/" >> .git/info/exclude
+# initialize for your project
+# Note all flags are for optional additional configuration.  See the docs. 
+ralph/init --claude --codex --beads 
 
 # (Optional) Create .env configuration
 cp ralph/.env.example ralph/.env
