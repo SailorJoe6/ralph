@@ -23,10 +23,14 @@ Common errors and fixes.
 - `EXECUTION_PLAN.md` present without `SPECIFICATION.md` causes an error. Restore the spec or remove the plan.
 
 **Runtime Root Errors**
-- `Ralph runtime requires a V2 project root`: run from a directory that contains `./.ralph/`, or initialize one with `ralph init`.
-- `legacy V1 Ralph folder detected`: current directory has `./ralph/` (V1 layout). Use `./ralph/start` for legacy behavior or run `ralph upgrade`.
+- `Ralph runtime requires a V2 project root`: run from a directory that contains `.ralph/`, or initialize one with `ralph init`.
+- `legacy V1 Ralph folder detected`: current directory has `ralph/` (V1 layout). Use `ralph/start` for legacy behavior or run `ralph upgrade`.
 - `Ralph must be run from the project root directory`: move to the detected root shown in the error and rerun.
 
 **Exiting Ralph**
 - Press `Ctrl+C` repeatedly in rapid succession to exit Ralph completely.
 - If that does not work, try `Ctrl+\` or exit the terminal session.
+
+---
+
+**Next:** [overview.md](overview.md) - Restart the reading sequence from workflow concepts and phase behavior.

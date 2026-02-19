@@ -49,3 +49,7 @@ Do **not** start the container with a command that exits (like `bash -c "echo do
 
 - Interactive mode requires a TTY. Ralph exits with an error if no TTY is available.
 - Non-interactive mode uses `-i` only and does not require a TTY.
+
+---
+
+**Next:** [resume.md](resume.md) - Resuming existing AI sessions and handoff resume behavior.

@@ -2,7 +2,7 @@
 
 Ralph is SailorJoe's implementation of Geoffry Huntly's "Ralph Wiggum Loop": a reusable design -> plan -> execute workflow for AI-assisted development. It loops continuously until interrupted or until planning docs indicate there is no remaining work.
 
-Runtime mode requires a V2 project root: the current working directory must contain `./.ralph/`.
+Runtime mode requires a V2 project root: the current working directory must contain a local `.ralph/` folder.  Run `ralph init` in the root folder of any project to set up Ralph to help you with that project.  
 
 **Phases**
 - Design: if no planning docs exist, Ralph runs the design prompt and expects the agent to produce `SPECIFICATION.md`.
@@ -22,11 +22,20 @@ Runtime mode requires a V2 project root: the current working directory must cont
 
 **Blocked Mode**
 - If no planning docs exist but blocked planning docs are present under `$(dirname "$SPECIFICATION")/blocked`, Ralph runs the blocked prompt.
+- Note: our execute prompt instructs your AI Agent (Claude, Codex) to move the plannign docs there if it gets bloecked so you can step in and help. 
 - With default path settings this is `.ralph/plans/blocked/`.
 
-**Key Paths**
+**Key Project Paths**
 - Project-root marker: `<project_root>/.ralph/`
+- Project-specific configuration: `<project_root>/.ralph/.env`
 - Runtime prompt lookup: `<project_root>/.ralph/prompts/`
-- Planning docs (default): `.ralph/plans/`
-- Logs (default): `.ralph/logs/`
-- Documentation: `ralph/docs/`
+- Planning docs (default): `<project_root>/.ralph/plans/`
+- Logs (default): `<project_root>/.ralph/logs/`
+
+**Key Global Paths**
+- User configuration `~/.ralph/.env`
+- Documentation: `~/.local/share/ralph/docs/`
+
+---
+
+**Next:** [install.md](install.md) - Global install layout, install script behavior, and update flow.

@@ -43,3 +43,7 @@ git pull origin main
 ## PATH Requirement
 
 Ensure `~/.local/bin` is on your `PATH`, or the `ralph` command will not be discoverable in new shells.
+
+---
+
+**Next:** [init.md](init.md) - `ralph init` CLI reference and initialization workflow.

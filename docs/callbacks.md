@@ -37,3 +37,7 @@ make lint
 ```
 
 If any step fails, `set -e` causes the script to exit non-zero, which stops Ralph.
+
+---
+
+**Next:** [troubleshooting.md](troubleshooting.md) - Common errors and remediation steps.

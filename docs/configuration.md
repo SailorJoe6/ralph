@@ -31,3 +31,7 @@ Relative values in `~/.ralph/.env` and shell environment variables are used as w
 - `CONTAINER_RUNTIME=docker`
 - `USE_CODEX=0`
 - `CALLBACK=` (empty)
+
+---
+
+**Next:** [containers.md](containers.md) - Container runtime behavior, workdir defaults, and TTY rules.

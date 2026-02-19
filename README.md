@@ -10,10 +10,10 @@ Ralph implements Geoff Huntly's Ralph Wiggum loop, a design → plan → execute
 
 Ralph orchestrates a structured workflow for AI-assisted development:
 
-1. **Design Phase** - Discuss requirements with AI, create specification
-2. **Plan Phase** - AI creates detailed execution plan based on specification
-3. **Execute Phase** - AI implements the plan with optional unattended mode
-4. **Handoff Phase** - AI updates planning docs with context for next session (runs automatically after each execute pass)
+1. **Design Phase** - Discuss requirements with AI, then it generates a detailed specification
+2. **Plan Phase** - AI creates detailed execution plan based on specification, you review it and work with the AI to get it perfect. 
+3. **Execute Phase** - AI implements the plan one step at a time, with a clean context window for each step. Optional unattended mode for extreme productivity.
+4. **Handoff Phase** - After each step, the AI updates planning docs with context for next session before clearing it's context window (runs automatically after each execute pass)
 
 Ralph automatically progresses through phases based on which planning documents exist:
 - No planning docs → runs design phase
@@ -21,6 +21,8 @@ Ralph automatically progresses through phases based on which planning documents 
 - Both specification and execution plan exist → runs execute phase (with automatic handoff after each pass)
 
 The workflow loops continuously, allowing iterative development with AI assistance.
+
+Each phase is kicked off with a unique tailored prompt, which you can customize to each project.  
 
 ## Installation
 
@@ -32,28 +34,13 @@ mkdir -p ~/.local/share/ralph
 cd ~/.local/share/ralph
 git clone https://github.com/SailorJoe6/ralph.git .
 
-# Install/refresh:
-# - ~/.local/bin/ralph
-# - ~/.local/share/ralph (runtime)
-# - ~/.ralph/.env.example
+# Install/refresh/upgrade:
 ./install
 ```
 
 If `ralph` is not found after install, add `~/.local/bin` to your PATH.
 
 Then initialize each project from its root:
-
-```bash
-ralph init --codex --beads
-# or
-ralph init --claude --beads
-```
-
-## Prompt Customization (Required)
-
-**IMPORTANT:** Prompts are project-specific and must be customized for your project before using ralph.
-
-Recommended setup is to run `ralph init` from your project root. It deterministically creates the V2 `.ralph` layout, copies prompt templates, optionally runs beads setup, and can create optional slash-command symlinks:
 
 ```bash
 # Codex workflow + beads templates
@@ -63,8 +50,14 @@ ralph init --codex --beads
 ralph init --claude --beads
 
 # Add newly-created setup folders to .git/info/exclude
-ralph init --stealth --claude
+ralph init --stealth --claude --codex --beads
 ```
+
+## Prompt Customization (Required)
+
+**IMPORTANT:** Prompts are project-specific and must be customized for your project before using ralph.
+
+Recommended setup is to run [ralph init](ralph/docs/init.md) from your project root. It deterministically creates the V2 `.ralph` layout, copies prompt templates, optionally runs beads setup, and can create optional custom slash-command symlinks to allow you to "try out" our prompts:
 
 Then customize the generated prompts for your project.
 
@@ -85,8 +78,6 @@ cp ~/.local/share/ralph/prompts/blocked.example.md .ralph/prompts/blocked.md
 # Edit each prompt to reference your project's specific documentation
 # For example, update file paths, project names, and workflow instructions
 ```
-
-The `.example.md` files are templates committed to the ralph repository. The active `.md` files live under `<project_root>/.ralph/prompts/` and are project-specific.
 
 **What to customize:**
 - File paths (e.g., `DEVELOPERS.md`, `README.md`, documentation locations)
@@ -159,9 +150,9 @@ Options:
 ```
 
 Subcommands:
-- `ralph start` - alias for runtime mode (prints a reminder that `ralph` is the default).
+- `ralph start` - alias for runtime mode (prints a reminder that `ralph` is all that's needed, `ralph start` is just an alias).
 - `ralph init` - project setup command.
-- `ralph upgrade` - migrate a legacy V1 `./ralph/` layout to V2 `./.ralph/`.
+- `ralph upgrade` - migrate a legacy V1 `ralph/` layout to V2 `.ralph/`.
 
 ## Container Support
 
@@ -283,7 +274,7 @@ Yolo mode enables full permissions but keeps the session interactive. It is inte
 - AI uses the `prepare.md` prompt instead of design/plan/execute workflow
 - Skips specification and execution plan checks entirely
 - Runs in execute loop mode (loops continuously until interrupted)
-- Handoff runs automatically after each freestyle pass
+- Does not run automatic handoff between freestyle passes
 - Must be run in interactive mode (unattended not supported)
 
 **Use case:** Quick iterations or exploratory work without formal planning documents. Useful for small changes, experiments, or when you want to work without the structure of the design → plan → execute workflow.
@@ -320,7 +311,6 @@ The handoff phase ensures that each work session ends with comprehensive documen
 
 **Invocation:**
 The handoff phase runs automatically after each execute phase pass, but only if:
-- In freestyle mode, OR
 - Both the specification and execution plan still exist
 
 When using Codex, the handoff attempts to resume the exact session ID recorded in `ERROR_LOG` (default: `.ralph/logs/ERROR_LOG.md`). If no session ID is found, it falls back to `codex exec resume --last`.
