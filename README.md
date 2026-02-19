@@ -40,7 +40,19 @@ cp ralph/.env.example ralph/.env
 
 **IMPORTANT:** Prompts are project-specific and must be customized for your project before using ralph.
 
-Ralph's prompts reference project-specific documentation (like `DEVELOPERS.md`, `docs/README.md`, etc.). You must copy the example prompts and customize them for your project:
+Recommended setup is to run `ralph/init` from your project root. It handles local git exclusion, prompt template copying, optional beads init, and optional command symlinks:
+
+```bash
+# Codex workflow + beads templates
+ralph/init --codex --beads
+
+# Claude workflow + beads templates + Claude slash-command symlinks
+ralph/init --claude --beads
+```
+
+Then customize the generated prompts for your project.
+
+Manual alternative (without `ralph/init`):
 
 ```bash
 # Copy example prompts (use .example.beads.md where available, otherwise use .example.md)
@@ -48,7 +60,7 @@ cp ralph/prompts/design.example.md ralph/prompts/design.md
 cp ralph/prompts/plan.example.md ralph/prompts/plan.md
 cp ralph/prompts/execute.example.beads.md ralph/prompts/execute.md
 cp ralph/prompts/handoff.example.beads.md ralph/prompts/handoff.md
-cp ralph/prompts/prepare.example.md ralph/prompts/prepare.md
+cp ralph/prompts/prepare.example.beads.md ralph/prompts/prepare.md
 
 # Edit each prompt to reference your project's specific documentation
 # For example, update file paths, project names, and workflow instructions
@@ -65,14 +77,15 @@ The `.example.md` files are templates committed to the ralph repository. The act
 ## Quick Start
 
 ```bash
-# Basic usage (interactive)
-ralph/start
+# One-time project setup
+ralph/init --codex --beads
+# or: ralph/init --claude --beads
 
-# Unattended execution (execute phase only)
-ralph/start --unattended
-
-# Use Codex instead of Claude
+# Basic usage (interactive, starts design/plan/execute based on docs)
 ralph/start --codex
+
+# Unattended execution (interactive design and plan, fulling unattended execute phase)
+ralph/start --codex --unattended
 ```
 
 ## Configuration
