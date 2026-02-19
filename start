@@ -345,6 +345,7 @@ run_codex() {
       else
         codex_cmd+=(--last)
       fi
+      codex_cmd+=(continue)
     else
       codex_cmd+=(resume)
       if [[ -n "$RESUME_SESSION" ]]; then
@@ -381,27 +382,37 @@ run_claude() {
   local noninteractive="$1"
   local prompt_text="$2"
 
-  local resume_flags=()
+  local claude_cmd=(claude "${PERM_CLAUDE_FLAGS[@]}")
+
   if [[ $RESUME_PENDING -eq 1 ]]; then
     if [[ -n "$RESUME_SESSION" ]]; then
-      resume_flags=(--resume "$RESUME_SESSION")
+      claude_cmd+=(--resume "$RESUME_SESSION")
     else
-      resume_flags=(--continue)
+      claude_cmd+=(--continue)
+    fi
+    if [[ "$noninteractive" == "1" ]]; then
+      claude_cmd+=(-p continue)
+    fi
+  else
+    if [[ "$noninteractive" == "1" ]]; then
+      claude_cmd+=(-p "$prompt_text")
+    else
+      claude_cmd+=("$prompt_text")
     fi
   fi
 
   if [[ -n "$CONTAINER_NAME" ]]; then
     set_container_exec_flags "$([[ "$noninteractive" == "1" ]] && echo 0 || echo 1)"
     if [[ "$noninteractive" == "1" ]]; then
-      run_noninteractive_cmd "$CONTAINER_RUNTIME" exec "${CONTAINER_EXEC_FLAGS[@]}" -w "$CONTAINER_WORKDIR" "$CONTAINER_NAME" claude "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" -p "$prompt_text"
+      run_noninteractive_cmd "$CONTAINER_RUNTIME" exec "${CONTAINER_EXEC_FLAGS[@]}" -w "$CONTAINER_WORKDIR" "$CONTAINER_NAME" "${claude_cmd[@]}"
     else
-      container_exec bash -c 'trap "exit 130" INT; exec claude "$@"' _ "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" "$prompt_text"
+      container_exec bash -c 'trap "exit 130" INT; exec "$@"' _ "${claude_cmd[@]}"
     fi
   else
     if [[ "$noninteractive" == "1" ]]; then
-      run_noninteractive_cmd claude "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" -p "$prompt_text"
+      run_noninteractive_cmd "${claude_cmd[@]}"
     else
-      bash -c 'trap "exit 130" INT; exec claude "$@"' _ "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" "$prompt_text"
+      bash -c 'trap "exit 130" INT; exec "$@"' _ "${claude_cmd[@]}"
     fi
   fi
 }
@@ -541,10 +552,9 @@ while :; do
     exit 1
   fi
 
-  # Run handoff (execute phase only, and only if planning docs still exist or in freestyle mode)
-  if [[ $EXECUTE_MODE -eq 1 ]]; then
-    # Only run handoff if we're in freestyle mode OR both planning docs still exist
-    if [[ $FREESTYLE -eq 1 || (-f "$SPECIFICATION" && -f "$EXECUTION_PLAN") ]]; then
+  # Run handoff only for non-freestyle execute passes when both planning docs still exist.
+  if [[ $EXECUTE_MODE -eq 1 && $FREESTYLE -eq 0 ]]; then
+    if [[ -f "$SPECIFICATION" && -f "$EXECUTION_PLAN" ]]; then
       if [[ -f "$HANDOFF_PROMPT" ]]; then
         handoff_text="$(cat "$HANDOFF_PROMPT")"
         handoff_require_tty=1
