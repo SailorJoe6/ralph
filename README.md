@@ -30,8 +30,10 @@ Clone ralph into your project and add it to the parent repo's git exclude file:
 # Clone ralph into your project
 git clone https://github.com/<username>/ralph.git ralph
 
-# initialize for your project
-# Note all flags are for optional additional configuration.  See the docs. 
+# hide the ralph folder via .git/info/exclude
+ralph/init
+
+# (Optional) setup beads and create custom slash commands for claude and/or codex
 ralph/init --claude --codex --beads 
 
 # (Optional) Create .env configuration
@@ -81,8 +83,7 @@ The `.example.md` files are templates committed to the ralph repository. The act
 
 ## Quick Start
 
-Ralph is designed to make it easy to "start from first principles" in accordance with [Geoff Huntly's video](https://youtu.be/4Nna09dG_c0?t=56) while also learining the specifics of SailorJoe's prompts.  
-Since e.g. `ralph/init --claude` will create custom slash commands for each of ralph's 4 prompts in your .claude/commands folder, you can actually just use these slash commands in any Claude (or Codex) session to see how it works. 
+Ralph is designed to make it easy to "start from first principles" in accordance with [Geoff Huntly's video](https://youtu.be/4Nna09dG_c0?t=56) while also learining the specifics of SailorJoe's prompts.  Since e.g. `ralph/init --claude` will create custom slash commands for each of ralph's 4 prompts in your .claude/commands folder, you can actually just use these slash commands in any Claude (or Codex) session to see how it works. 
 
 1) `/design` to experience the Q&A style specification development 
 2) `/plan` to see the AI Agent build out the detailed execution plan from the spec
@@ -103,18 +104,18 @@ ralph/start uses the fully interactive mode in claude (or codex).  You still nee
 When you are ready to give the agent more autonomy: 
 ```bash
 # Unattended execution (interactive design and plan, fulling unattended execute phase)
-ralph/start --yolo        # uses interactive mode with --dangerously-skip-permissions so consider pairing with a dev container!  See the intro to --container below.
+ralph/start --yolo        # uses interactive mode with --dangerously-skip-permissions so pair with --container (see below)
 ralph/start --unattended  # uses fully unattended mode with --dangerously-skip-permissions 
 ```
 
-Since `--yolo` uses interactive mode, you will be able to monitor, interupt and interact with the AI Agent.  As a tradeoff, you still need to end each iteration of the loop with `/quit` or CTRL+C.  However, movement through the phases (including the handoff phase) will be fully automatic. 
+Since `--yolo` uses interactive mode, you will be able to monitor, interupt and interact with the AI Agent.  However, you still need to end each iteration of the loop with `/quit` or CTRL+C.  Movement through the phases (including the handoff phase) will be fully automated. 
 
-If you use `--unattended` both design and plan are still interactive, allowing you to use the Q&A style design process and inspect/edit the plan and spec before moving on.  However, the execution phase will be fully automatic and run until the spec is fully automated, or the agent becomes blocked, at which time it will switch back to interactive mode.  At this point, go have dinner or do something else.  Output will be sent to the logs, so you can check on the status, but the output log is only updated once every iteration of the loop. 
+If you use `--unattended` both design and plan are interactive, allowing you to use the Q&A style design process and inspect/edit the plan and spec before moving on.  However, the execution phase will be fully unattended and run until the spec is implemented, or the agent becomes blocked, at which time it will switch back to interactive mode.  At this point, go have dinner or do something fun.  Output will be sent to the logs, so you can check on the status, but the output log is only updated once every iteration of the loop. 
 
 Either mode uses `--dangerously-skip-permissions` so consider [running with a dev container](#container-support)
 
-## Hard exit from the loop
-CTRL+C will be first passed to claude or codex, which will respond in their normal way.  Therefore, the only way to exit the ralph script is to repeatedly press CTRL+C!  
+## Exiting from the loop
+CTRL+C will be processed by claude or codex first, which will respond in their normal way.  Therefore, the only way to exit the ralph script is to repeatedly press CTRL+C!  
 
 ## Configuration
 
