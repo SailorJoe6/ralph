@@ -1,6 +1,10 @@
 # Ralph - Reusable AI-Assisted Development Workflow Tool
 
-Ralph implements a design → plan → execute workflow for AI-assisted development with support for Claude and Codex CLI tools.
+IMPORTANT ANNOUNCEMENT: Ralph V2 is coming soon!  This will be the LAST COMMIT of Ralph V1.  Ralph V2 is a major overhaul designed to allow for a single install of the Ralph scripts, into your `~/.local/bin` directory, and then use `ralph init` in any project to set up project local configuration.  For immediate access to Ralph V2, switch to the Ralph V2 branch now!
+
+## Introduction
+
+Ralph implements Geoff Huntly's Ralph Wiggum loop, a design → plan → execute workflow for AI-assisted development with support for Claude and Codex CLI tools.
 
 ## What is Ralph?
 
