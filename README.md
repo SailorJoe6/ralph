@@ -6,7 +6,7 @@ IMPORTANT ANNOUNCEMENT: Ralph V2 is coming soon!  This will be the LAST COMMIT o
 
 Ralph implements Geoff Huntly's Ralph Wiggum loop, a design → plan → execute workflow for AI-assisted development with support for Claude and Codex CLI tools.
 
-## What is Ralph?
+## What is the Ralph Wiggum loop?
 
 Ralph orchestrates a structured workflow for AI-assisted development:
 
@@ -49,13 +49,13 @@ Recommended setup is to run `ralph/init` from your project root. It handles loca
 
 ```bash
 # Codex workflow + beads templates
-ralph/init --codex --beads
+ralph/init --codex --beads # initialize beads and symlink custom slash commands for codex
 
 # Claude workflow + beads templates + Claude slash-command symlinks
-ralph/init --claude --beads
+ralph/init --claude --beads # initialize beads and symlink custom slash commands for claude
 ```
 
-Then customize the generated prompts for your project.
+Be sure to customize the generated prompts for your project.
 
 Manual alternative (without `ralph/init`):
 
@@ -81,17 +81,40 @@ The `.example.md` files are templates committed to the ralph repository. The act
 
 ## Quick Start
 
+Ralph is designed to make it easy to "start from first principles" in accordance with [Geoff Huntly's video](https://youtu.be/4Nna09dG_c0?t=56) while also learining the specifics of SailorJoe's prompts.  
+Since e.g. `ralph/init --claude` will create custom slash commands for each of ralph's 4 prompts in your .claude/commands folder, you can actually just use these slash commands in any Claude (or Codex) session to see how it works. 
+
+1) `/design` to experience the Q&A style specification development 
+2) `/plan` to see the AI Agent build out the detailed execution plan from the spec
+3) `/exeucte` for a single iteration of the AI Agent working the plan
+4) `/handoff` at the end of a single iteration to plan for the next iteration by updating the plan and (optionally) beads.
+5) `/clear` (or `/new`) to clear the context for the next iteration.
+
+Repeat steps 3 - 5 as many times at needed for the AI Agent finish implementing your design step by step.  This is learning from first principles, except you're using the built in prompts instead of making them up as you go. 
+
+Next, once you are ready to experience the actual ralph script:
 ```bash
-# One-time project setup
-ralph/init --codex --beads
-# or: ralph/init --claude --beads
-
 # Basic usage (interactive, starts design/plan/execute based on docs)
-ralph/start --codex
-
-# Unattended execution (interactive design and plan, fulling unattended execute phase)
-ralph/start --codex --unattended
+ralph/start     # uses claude.  --codex to use codex instead. 
 ```
+
+ralph/start uses the fully interactive mode in claude (or codex).  You still need to approve all commands, and you need to exit with `/quit` or CTRL+C at the end of every iteration, then the loop will continue. 
+
+When you are ready to give the agent more autonomy: 
+```bash
+# Unattended execution (interactive design and plan, fulling unattended execute phase)
+ralph/start --yolo        # uses interactive mode with --dangerously-skip-permissions so consider pairing with a dev container!  See the intro to --container below.
+ralph/start --unattended  # uses fully unattended mode with --dangerously-skip-permissions 
+```
+
+Since `--yolo` uses interactive mode, you will be able to monitor, interupt and interact with the AI Agent.  As a tradeoff, you still need to end each iteration of the loop with `/quit` or CTRL+C.  However, movement through the phases (including the handoff phase) will be fully automatic. 
+
+If you use `--unattended` both design and plan are still interactive, allowing you to use the Q&A style design process and inspect/edit the plan and spec before moving on.  However, the execution phase will be fully automatic and run until the spec is fully automated, or the agent becomes blocked, at which time it will switch back to interactive mode.  At this point, go have dinner or do something else.  Output will be sent to the logs, so you can check on the status, but the output log is only updated once every iteration of the loop. 
+
+Either mode uses `--dangerously-skip-permissions` so consider [running with a dev container](#container-support)
+
+## Hard exit from the loop
+CTRL+C will be first passed to claude or codex, which will respond in their normal way.  Therefore, the only way to exit the ralph script is to repeatedly press CTRL+C!  
 
 ## Configuration
 
@@ -129,9 +152,9 @@ Options:
   -f, --freestyle         Run execute loop with prepare prompt (skip spec/plan checks)
   -y, --yolo              Enable all permissions without unattended execution
   --codex                 Use Codex instead of Claude
-  --container <name>      Execute commands inside specified container
-  --workdir <path>        Container working directory (default: /<basename>)
-  --callback <script>     Run script after each pass
+  --container <name>      Execute commands inside specified container (must be already running)
+  --workdir <path>        Working directory to mount into the container (default: pwd)
+  --callback <script>     An optional script you write, have Ralph run it after each pass (useful for linting, format checking, etc.)
   -h, --help              Show this help message
 ```
 
@@ -140,11 +163,14 @@ Options:
 Ralph can execute AI commands inside a running dev container:
 
 ```bash
+# container must be running
+docker run -d --name my-dev-container your-image-name sleep infinity
+
 # Using default workdir (/<basename>)
 ralph/start --container my-dev-container
 
 # Custom workdir
-ralph/start --container my-dev-container --workdir /workspace/myproject
+ralph/start --container my-dev-container --workdir /your-workspace/src
 
 # With Codex
 ralph/start --container my-dev-container --codex
@@ -163,23 +189,6 @@ You can set the container workdir in three ways (highest precedence first):
 3. `.env` file: `CONTAINER_WORKDIR=/custom/path`
 
 If none are set, ralph uses `/<basename>` as the default.
-
-## Integration with AI Assistants (Optional)
-
-For slash command support in Claude/Codex, create symlinks from your AI assistant's command directory to ralph's prompts:
-
-```bash
-mkdir -p .claude/commands
-ln -s ../../ralph/prompts/design.md .claude/commands/design.md
-ln -s ../../ralph/prompts/plan.md .claude/commands/plan.md
-ln -s ../../ralph/prompts/execute.md .claude/commands/execute.md
-ln -s ../../ralph/prompts/handoff.md .claude/commands/handoff.md
-ln -s ../../ralph/prompts/prepare.md .claude/commands/prepare.md
-```
-
-Then you can run `/design`, `/plan`, `/execute`, `/handoff`, or `/prepare` directly in your AI assistant.
-
-**Note:** This is optional. You can always invoke ralph via `ralph/start` without symlinks. The handoff phase runs automatically after each execute pass, but the `/handoff` command can be useful for manual handoff preparation. The `/prepare` command is used for freestyle mode.
 
 ## Workflow Phases
 
@@ -228,15 +237,6 @@ ralph/start
 ralph/start
 ```
 
-**Unattended mode:**
-```bash
-ralph/start --unattended
-```
-
-In unattended mode, the AI runs with elevated permissions (`--dangerously-skip-permissions` for Claude, or `--dangerously-bypass-approvals-and-sandbox` for Codex) and logs all output to `ralph/logs/OUTPUT_LOG.md` and errors to `ralph/logs/ERROR_LOG.md`.
-
-**Important:** Unattended mode is CLI-only and cannot be enabled via `.env` or environment variables. It only works with the execute phase (not freestyle mode).
-
 **Yolo mode:**
 ```bash
 ralph/start --yolo
@@ -244,8 +244,16 @@ ralph/start --yolo
 
 Yolo mode enables full permissions but keeps the session interactive. It is intended for runs where you need elevated permissions without the unattended execute flow.
 
-**Restrictions:**
-- Cannot be combined with `--unattended` (yolo requires interactive input)
+
+**Unattended mode:**
+```bash
+ralph/start --unattended
+```
+
+In unattended mode, the AI runs with elevated permissions (`--dangerously-skip-permissions` for Claude, or `--dangerously-bypass-approvals-and-sandbox` for Codex) and logs all output to `ralph/logs/OUTPUT_LOG.md` and errors to `ralph/logs/ERROR_LOG.md`.
+
+**Important:** Unattended mode is CLI-only and cannot be enabled via `.env` or environment variables. 
+
 
 ### Freestyle Mode
 
@@ -255,7 +263,7 @@ Yolo mode enables full permissions but keeps the session interactive. It is inte
 - AI uses the `prepare.md` prompt instead of design/plan/execute workflow
 - Skips specification and execution plan checks entirely
 - Runs in execute loop mode (loops continuously until interrupted)
-- Handoff runs automatically after each freestyle pass
+- Handoff runs automatically after each freestyle pass 
 - Must be run in interactive mode (unattended not supported)
 
 **Use case:** Quick iterations or exploratory work without formal planning documents. Useful for small changes, experiments, or when you want to work without the structure of the design → plan → execute workflow.
