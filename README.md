@@ -28,7 +28,7 @@ Clone ralph into your project and add it to the parent repo's git exclude file:
 
 ```bash
 # Clone ralph into your project
-git clone https://github.com/<username>/ralph.git ralph
+git clone https://github.com/SailorJoe6/ralph.git ralph
 
 # hide the ralph folder via .git/info/exclude
 ralph/init
