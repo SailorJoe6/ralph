@@ -13,7 +13,7 @@ YOLO=0
 STEALTH=0
 PROJECT_ARG=""
 
-declare -A CREATED_TOP_LEVEL=()
+CREATED_TOP_LEVEL_TRACKER=$'\n'
 
 print_help() {
   cat <<'EOF'
@@ -48,7 +48,14 @@ warn() {
 
 mark_top_level_created() {
   local rel_dir="$1"
-  CREATED_TOP_LEVEL["$rel_dir"]=1
+  if ! top_level_created "$rel_dir"; then
+    CREATED_TOP_LEVEL_TRACKER+="${rel_dir}"$'\n'
+  fi
+}
+
+top_level_created() {
+  local rel_dir="$1"
+  [[ "$CREATED_TOP_LEVEL_TRACKER" == *$'\n'"$rel_dir"$'\n'* ]]
 }
 
 ensure_top_level_dir() {
@@ -120,7 +127,7 @@ add_stealth_excludes() {
   local git_exclude_path=""
 
   for rel_dir in .ralph .beads .codex .claude; do
-    if [[ "${CREATED_TOP_LEVEL[$rel_dir]:-0}" == "1" ]]; then
+    if top_level_created "$rel_dir"; then
       created_entries+=("${rel_dir}/")
     fi
   done

@@ -16,19 +16,7 @@ V2_ROOT=""
 
 PATH_KEYS=(SPECIFICATION EXECUTION_PLAN LOG_DIR ERROR_LOG OUTPUT_LOG)
 
-declare -A LEGACY_EFFECTIVE=()
-declare -A LEGACY_EXPLICIT=()
-declare -A MIGRATED_VALUES=()
-declare -A REWRITTEN_KEYS=()
-declare -A V2_DEFAULTS=(
-  [SPECIFICATION]=".ralph/plans/SPECIFICATION.md"
-  [EXECUTION_PLAN]=".ralph/plans/EXECUTION_PLAN.md"
-  [LOG_DIR]=".ralph/logs"
-  [ERROR_LOG]=".ralph/logs/ERROR_LOG.md"
-  [OUTPUT_LOG]=".ralph/logs/OUTPUT_LOG.md"
-)
-
-declare -A CREATED_TOP_LEVEL=()
+CREATED_TOP_LEVEL_TRACKER=$'\n'
 LEGACY_CLEANUP_REASON=""
 
 print_help() {
@@ -57,9 +45,43 @@ info() {
   echo "$1"
 }
 
+path_value_set() {
+  local namespace="$1"
+  local key="$2"
+  local value="$3"
+  local var_name="${namespace}_${key}"
+  printf -v "$var_name" '%s' "$value"
+}
+
+path_value_get() {
+  local namespace="$1"
+  local key="$2"
+  local var_name="${namespace}_${key}"
+  printf '%s' "${!var_name-}"
+}
+
+v2_default_for_key() {
+  local key="$1"
+  case "$key" in
+    SPECIFICATION) printf '%s' ".ralph/plans/SPECIFICATION.md" ;;
+    EXECUTION_PLAN) printf '%s' ".ralph/plans/EXECUTION_PLAN.md" ;;
+    LOG_DIR) printf '%s' ".ralph/logs" ;;
+    ERROR_LOG) printf '%s' ".ralph/logs/ERROR_LOG.md" ;;
+    OUTPUT_LOG) printf '%s' ".ralph/logs/OUTPUT_LOG.md" ;;
+    *) fail "internal error: unknown path key '$key'" ;;
+  esac
+}
+
+top_level_created() {
+  local rel_dir="$1"
+  [[ "$CREATED_TOP_LEVEL_TRACKER" == *$'\n'"$rel_dir"$'\n'* ]]
+}
+
 mark_top_level_created() {
   local rel_dir="$1"
-  CREATED_TOP_LEVEL["$rel_dir"]=1
+  if ! top_level_created "$rel_dir"; then
+    CREATED_TOP_LEVEL_TRACKER+="${rel_dir}"$'\n'
+  fi
 }
 
 ensure_top_level_dir() {
@@ -77,7 +99,7 @@ add_stealth_excludes() {
   local git_exclude_path=""
 
   for rel_dir in .ralph .beads .codex .claude; do
-    if [[ "${CREATED_TOP_LEVEL[$rel_dir]:-0}" == "1" ]]; then
+    if top_level_created "$rel_dir"; then
       created_entries+=("${rel_dir}/")
     fi
   done
@@ -128,19 +150,19 @@ capture_legacy_effective_paths() {
   local key=""
   local value=""
 
-  LEGACY_EFFECTIVE[SPECIFICATION]="ralph/plans/SPECIFICATION.md"
-  LEGACY_EFFECTIVE[EXECUTION_PLAN]="ralph/plans/EXECUTION_PLAN.md"
-  LEGACY_EFFECTIVE[LOG_DIR]="ralph/logs"
-  LEGACY_EXPLICIT[SPECIFICATION]=0
-  LEGACY_EXPLICIT[EXECUTION_PLAN]=0
-  LEGACY_EXPLICIT[LOG_DIR]=0
-  LEGACY_EXPLICIT[ERROR_LOG]=0
-  LEGACY_EXPLICIT[OUTPUT_LOG]=0
+  path_value_set LEGACY_EFFECTIVE SPECIFICATION "ralph/plans/SPECIFICATION.md"
+  path_value_set LEGACY_EFFECTIVE EXECUTION_PLAN "ralph/plans/EXECUTION_PLAN.md"
+  path_value_set LEGACY_EFFECTIVE LOG_DIR "ralph/logs"
+  path_value_set LEGACY_EXPLICIT SPECIFICATION "0"
+  path_value_set LEGACY_EXPLICIT EXECUTION_PLAN "0"
+  path_value_set LEGACY_EXPLICIT LOG_DIR "0"
+  path_value_set LEGACY_EXPLICIT ERROR_LOG "0"
+  path_value_set LEGACY_EXPLICIT OUTPUT_LOG "0"
 
   if [[ -f "$LEGACY_ENV_FILE" ]]; then
     while IFS=$'\t' read -r key value; do
-      LEGACY_EFFECTIVE["$key"]="$value"
-      LEGACY_EXPLICIT["$key"]=1
+      path_value_set LEGACY_EFFECTIVE "$key" "$value"
+      path_value_set LEGACY_EXPLICIT "$key" "1"
     done < <(
       (
         set +u
@@ -156,28 +178,30 @@ capture_legacy_effective_paths() {
     )
   fi
 
-  if [[ "${LEGACY_EXPLICIT[ERROR_LOG]}" != "1" ]]; then
-    LEGACY_EFFECTIVE[ERROR_LOG]="${LEGACY_EFFECTIVE[LOG_DIR]}/ERROR_LOG.md"
+  if [[ "$(path_value_get LEGACY_EXPLICIT ERROR_LOG)" != "1" ]]; then
+    path_value_set LEGACY_EFFECTIVE ERROR_LOG "$(path_value_get LEGACY_EFFECTIVE LOG_DIR)/ERROR_LOG.md"
   fi
 
-  if [[ "${LEGACY_EXPLICIT[OUTPUT_LOG]}" != "1" ]]; then
-    LEGACY_EFFECTIVE[OUTPUT_LOG]="${LEGACY_EFFECTIVE[LOG_DIR]}/OUTPUT_LOG.md"
+  if [[ "$(path_value_get LEGACY_EXPLICIT OUTPUT_LOG)" != "1" ]]; then
+    path_value_set LEGACY_EFFECTIVE OUTPUT_LOG "$(path_value_get LEGACY_EFFECTIVE LOG_DIR)/OUTPUT_LOG.md"
   fi
 }
 
 compute_migrated_paths() {
   local key=""
   local current_value=""
+  local default_value=""
 
   for key in "${PATH_KEYS[@]}"; do
-    current_value="${LEGACY_EFFECTIVE[$key]}"
+    current_value="$(path_value_get LEGACY_EFFECTIVE "$key")"
+    default_value="$(v2_default_for_key "$key")"
     if path_points_into_legacy_root "$current_value"; then
-      MIGRATED_VALUES["$key"]="${V2_DEFAULTS[$key]}"
-      REWRITTEN_KEYS["$key"]=1
-      warn "Rewriting $key from '$current_value' to '${V2_DEFAULTS[$key]}' to allow legacy ./ralph removal"
+      path_value_set MIGRATED_VALUES "$key" "$default_value"
+      path_value_set REWRITTEN_KEYS "$key" "1"
+      warn "Rewriting $key from '$current_value' to '$default_value' to allow legacy ./ralph removal"
     else
-      MIGRATED_VALUES["$key"]="$current_value"
-      REWRITTEN_KEYS["$key"]=0
+      path_value_set MIGRATED_VALUES "$key" "$current_value"
+      path_value_set REWRITTEN_KEYS "$key" "0"
     fi
   done
 }
@@ -202,12 +226,12 @@ write_migrated_env_file() {
   fi
 
   for key in "${PATH_KEYS[@]}"; do
-    if [[ "${REWRITTEN_KEYS[$key]}" == "1" ]]; then
+    if [[ "$(path_value_get REWRITTEN_KEYS "$key")" == "1" ]]; then
       if [[ "$appended" == "0" ]]; then
         printf '\n# Added by ralph upgrade to redirect legacy ralph/ paths into .ralph/\n' >> "$env_dest"
         appended=1
       fi
-      append_shell_assignment "$env_dest" "$key" "${MIGRATED_VALUES[$key]}"
+      append_shell_assignment "$env_dest" "$key" "$(path_value_get MIGRATED_VALUES "$key")"
     fi
   done
 }
@@ -430,17 +454,17 @@ migrate_known_artifacts() {
   # Plans are migrated recursively to preserve archive/blocked/future state.
   merge_directory_contents "$LEGACY_ROOT/plans" "$V2_ROOT/plans" "plans"
 
-  source_spec="$(resolved_path_from_setting "${LEGACY_EFFECTIVE[SPECIFICATION]}")"
-  source_plan="$(resolved_path_from_setting "${LEGACY_EFFECTIVE[EXECUTION_PLAN]}")"
-  source_log_dir="$(resolved_path_from_setting "${LEGACY_EFFECTIVE[LOG_DIR]}")"
-  source_error="$(resolved_path_from_setting "${LEGACY_EFFECTIVE[ERROR_LOG]}")"
-  source_output="$(resolved_path_from_setting "${LEGACY_EFFECTIVE[OUTPUT_LOG]}")"
+  source_spec="$(resolved_path_from_setting "$(path_value_get LEGACY_EFFECTIVE SPECIFICATION)")"
+  source_plan="$(resolved_path_from_setting "$(path_value_get LEGACY_EFFECTIVE EXECUTION_PLAN)")"
+  source_log_dir="$(resolved_path_from_setting "$(path_value_get LEGACY_EFFECTIVE LOG_DIR)")"
+  source_error="$(resolved_path_from_setting "$(path_value_get LEGACY_EFFECTIVE ERROR_LOG)")"
+  source_output="$(resolved_path_from_setting "$(path_value_get LEGACY_EFFECTIVE OUTPUT_LOG)")"
 
-  dest_spec="$(resolved_path_from_setting "${MIGRATED_VALUES[SPECIFICATION]}")"
-  dest_plan="$(resolved_path_from_setting "${MIGRATED_VALUES[EXECUTION_PLAN]}")"
-  dest_log_dir="$(resolved_path_from_setting "${MIGRATED_VALUES[LOG_DIR]}")"
-  dest_error="$(resolved_path_from_setting "${MIGRATED_VALUES[ERROR_LOG]}")"
-  dest_output="$(resolved_path_from_setting "${MIGRATED_VALUES[OUTPUT_LOG]}")"
+  dest_spec="$(resolved_path_from_setting "$(path_value_get MIGRATED_VALUES SPECIFICATION)")"
+  dest_plan="$(resolved_path_from_setting "$(path_value_get MIGRATED_VALUES EXECUTION_PLAN)")"
+  dest_log_dir="$(resolved_path_from_setting "$(path_value_get MIGRATED_VALUES LOG_DIR)")"
+  dest_error="$(resolved_path_from_setting "$(path_value_get MIGRATED_VALUES ERROR_LOG)")"
+  dest_output="$(resolved_path_from_setting "$(path_value_get MIGRATED_VALUES OUTPUT_LOG)")"
 
   migrate_file_path "$source_spec" "$dest_spec" "specification"
   migrate_file_path "$source_plan" "$dest_plan" "execution plan"
