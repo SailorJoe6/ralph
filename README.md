@@ -286,7 +286,8 @@ ralph --freestyle
 
 **Restrictions:**
 - If you pass both `--freestyle` and `--unattended`, Ralph normalizes to interactive freestyle with yolo permissions.
-- Must have `.ralph/prompts/prepare.md` customized for your project
+- Freestyle skips project-root enforcement and resolves `.ralph/...` paths from the current directory
+- Must have `.ralph/prompts/prepare.md` available in the current directory
 - Still supports `--codex`, `--container`, and `--workdir` options
 
 ### Handoff Phase

@@ -44,6 +44,7 @@ RUN_STDERR=""
 run_start() {
   local cwd="$1"
   local home_dir="$2"
+  shift 2
   local stdout_file=""
   local stderr_file=""
   stdout_file="$(mktemp)"
@@ -51,7 +52,7 @@ run_start() {
   set +e
   (
     cd "$cwd"
-    HOME="$home_dir" PATH="$FAKE_BIN:$PATH" "$START_BIN"
+    HOME="$home_dir" PATH="$FAKE_BIN:$PATH" "$START_BIN" "$@"
   ) >"$stdout_file" 2>"$stderr_file"
   RUN_STATUS=$?
   set -e
@@ -128,5 +129,16 @@ run_start "$ANCESTOR_CWD" "$ANCESTOR_HOME"
 assert_contains "$RUN_STDERR" "Ralph must be run from the project root directory." "message3 root requirement"
 assert_contains "$RUN_STDERR" "$ANCESTOR_CWD" "message3 includes current directory"
 assert_contains "$RUN_STDERR" "$ANCESTOR_ROOT" "message3 includes detected root path"
+
+# Case 6: freestyle skips runtime project-root enforcement.
+FREESTYLE_HOME="$TMP_ROOT/home-freestyle-no-root"
+FREESTYLE_CWD="$TMP_ROOT/freestyle-no-root/work"
+mkdir -p "$FREESTYLE_HOME" "$FREESTYLE_CWD"
+
+run_start "$FREESTYLE_CWD" "$FREESTYLE_HOME" --freestyle
+[[ "$RUN_STATUS" == "1" ]] || { echo "Expected freestyle no-root run to exit 1 (missing prepare prompt)" >&2; exit 1; }
+assert_not_contains "$RUN_STDERR" "Ralph runtime requires a V2 project root" "freestyle bypasses no-root preflight"
+assert_not_contains "$RUN_STDERR" "Ralph must be run from the project root directory." "freestyle bypasses ancestor-root preflight"
+assert_contains "$RUN_STDOUT$RUN_STDERR" "Prompt file not found: $FREESTYLE_CWD/.ralph/prompts/prepare.md" "freestyle no-root reaches prompt validation"
 
 echo "test_runtime_root_enforcement.sh: PASS"

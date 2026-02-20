@@ -215,8 +215,10 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if ! enforce_runtime_project_root; then
-  exit 1
+if [[ $FREESTYLE -eq 0 ]]; then
+  if ! enforce_runtime_project_root; then
+    exit 1
+  fi
 fi
 
 if [[ -n "$LOG_DIR" ]]; then

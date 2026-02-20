@@ -27,11 +27,11 @@ ralph start [OPTIONS]
 - `--container` requires the configured container runtime to exist.
 
 **Project Root Enforcement**
-- `ralph start` must be called from a project root.
-- The script checks for a `.ralph/` folder in the current working directory, and will prompt you to run `ralph init` if not found.
-- If `ralph/` (legacy V1 folder) is present instead, runtime hard-fails with migration guidance (`ralph/start` for legacy flow, or `ralph upgrade` to switch current project to V2).
-- If `.ralph/` is found only in an ancestor directory, runtime hard-fails and prints a helpful message.
-- If no project root is found, runtime hard-fails with guidance on how to initialize a project.
+- In normal design/plan/execute flow, `ralph start` must be called from a project root.
+- In `--freestyle`, runtime skips project-root enforcement and can run from any current directory.
+- Outside freestyle, the script checks for a `.ralph/` folder in the current working directory, and prompts you to run `ralph init` if not found.
+- Outside freestyle, if `ralph/` (legacy V1 folder) is present instead, runtime hard-fails with migration guidance (`ralph/start` for legacy flow, or `ralph upgrade` to switch current project to V2).
+- Outside freestyle, if `.ralph/` is found only in an ancestor directory, runtime hard-fails and prints a helpful message.
 
 **Non-Interactive Mode**
 - Non-interactive behavior only applies to execute mode when `--unattended` is set, in other nodes, it is treated the same as `--yolo`.

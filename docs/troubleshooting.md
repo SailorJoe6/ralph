@@ -8,7 +8,7 @@ Common errors and fixes.
 
 **Missing Prompts**
 - If a selected prompt file is missing, `ralph` exits and prints prompt-creation guidance.
-- Runtime prompt lookup path is `<project_root>/.ralph/prompts/`.
+- Runtime prompt lookup path is `<project_root>/.ralph/prompts/` in normal flow, and `<cwd>/.ralph/prompts/` in `--freestyle`.
 
 **Container Errors**
 - `Error: container not found` or `Error: container is not running`: start the container and retry.
@@ -23,7 +23,7 @@ Common errors and fixes.
 - `EXECUTION_PLAN.md` present without `SPECIFICATION.md` causes an error. Restore the spec or remove the plan.
 
 **Runtime Root Errors**
-- `Ralph runtime requires a V2 project root`: run from a directory that contains `.ralph/`, or initialize one with `ralph init`.
+- `Ralph runtime requires a V2 project root`: run from a directory that contains `.ralph/`, or initialize one with `ralph init` (this check is skipped in `--freestyle`).
 - `legacy V1 Ralph folder detected`: current directory has `ralph/` (V1 layout). Use `ralph/start` for legacy behavior or run `ralph upgrade`.
 - `Ralph must be run from the project root directory`: move to the detected root shown in the error and rerun.
 

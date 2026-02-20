@@ -2,7 +2,7 @@
 
 Ralph is SailorJoe's implementation of Geoffry Huntly's "Ralph Wiggum Loop": a reusable design -> plan -> execute workflow for AI-assisted development. It loops continuously until interrupted or until planning docs indicate there is no remaining work.
 
-Runtime mode requires a V2 project root: the current working directory must contain a local `.ralph/` folder.  Run `ralph init` in the root folder of any project to set up Ralph to help you with that project.  
+Runtime mode requires a V2 project root for the standard design -> plan -> execute flow: the current working directory must contain a local `.ralph/` folder. Run `ralph init` in the root folder of any project to set up Ralph to help you with that project. Freestyle is the exception and skips project-root enforcement.
 
 **Phases**
 - Design: if no planning docs exist, Ralph runs the design prompt and expects the agent to produce `SPECIFICATION.md`.
@@ -18,6 +18,7 @@ Runtime mode requires a V2 project root: the current working directory must cont
 
 **Freestyle Mode**
 - `ralph --freestyle` skips planning-doc checks and runs the prepare prompt in interactive mode.
+- Freestyle can run outside a project root; prompt/log/default paths are resolved from the current directory.
 - Freestyle is always interactive. If `--unattended` is passed with `--freestyle`, Ralph treats it as `--yolo` (elevated permissions, still interactive). See [permissions.md](permissions.md).
 
 **Blocked Mode**
