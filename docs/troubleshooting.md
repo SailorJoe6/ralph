@@ -30,7 +30,3 @@ Common errors and fixes.
 **Exiting Ralph**
 - Press `Ctrl+C` repeatedly in rapid succession to exit Ralph completely.
 - If that does not work, try `Ctrl+\` or exit the terminal session.
-
----
-
-**Next:** [overview.md](overview.md) - Restart the reading sequence from workflow concepts and phase behavior.
