@@ -1,6 +1,6 @@
 # Ralph - Reusable AI-Assisted Development Workflow Tool
 
-IMPORTANT: Ralph V2 command/layout migration is complete on this branch; remaining work is validation and rollout hardening.
+IMPORTANT: Ralph V2 has been merged.  Check the installation steps below to get the ralph commands available in your CLI.  If you have a the V1 ralph scripts checked out to any projects locally, upgrade them with `ralph upgrade` to get an automatic uplift to Ralph V2. 
 
 ## Introduction
 
