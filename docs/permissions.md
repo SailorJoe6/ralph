@@ -32,3 +32,7 @@ When `--yolo` or `--unattended` is set, Ralph passes:
 - Claude: `--dangerously-skip-permissions`
 
 Without either flag, no extra permission flags are passed to the AI.
+
+---
+
+**Next:** [configuration.md](configuration.md) - `.env` loading, environment variables, and defaults.

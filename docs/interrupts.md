@@ -20,3 +20,7 @@ In short: exiting the AI agent (whether via Ctrl+C, `/exit`, or any other means)
 - Ralph wraps the agent with a SIGINT trap that kills the process immediately.
 - If the log output includes the phrase "task interrupted", Ralph exits cleanly.
 - Exit code 130 (SIGINT) from the agent causes Ralph to exit its loop.
+
+---
+
+**Next:** [prompts-and-plans.md](prompts-and-plans.md) - Prompt files, templates, planning docs, and blocked plans.

@@ -1,31 +1,37 @@
 # Configuration
 
-Ralph loads configuration from `ralph/.env` if present, then applies defaults and CLI overrides. Prompt file paths are hardcoded and not configurable.
+Ralph runtime commands (`ralph`, `ralph start`, `ralph init`, `ralph upgrade`) share one config-loading layer.
 
-**Precedence**
-- CLI flags override environment variables.
-- Environment variables override defaults.
-- `UNATTENDED` is CLI-only and ignores environment values.
+Prompt file paths are hardcoded by runtime script and are not loaded from `.env`.
 
-**Planning Docs**
-- `SPECIFICATION` default: `ralph/plans/SPECIFICATION.md`
-- `EXECUTION_PLAN` default: `ralph/plans/EXECUTION_PLAN.md`
+**Precedence (highest -> lowest)**
+- CLI flags
+- Shell environment variables
+- Project config: `<project_root>/.ralph/.env`
+- User config: `~/.ralph/.env`
+- Script defaults
 
-**Logging**
-- `LOG_DIR` default: `ralph/logs`
-- `ERROR_LOG` default: `${LOG_DIR}/ERROR_LOG.md`
-- `OUTPUT_LOG` default: `${LOG_DIR}/OUTPUT_LOG.md`
-- Legacy `OUT_LOG` is not read by the current script.
+`UNATTENDED` is CLI-only and ignores environment values.
 
-**Behavior Flags**
-- `USE_CODEX` default: `0`
-- `FREESTYLE` default: `0`
-- `YOLO` default: `0`
-- `RESUME_MODE` default: `0`
-- `RESUME_SESSION` default: empty
-- `CALLBACK` default: empty
+Ralph never loads from `.env.example` files.
 
-**Container Settings**
-- `CONTAINER_NAME` default: empty
-- `CONTAINER_RUNTIME` default: `docker`
-- `CONTAINER_WORKDIR` default: empty, then set to `/<basename>` when `--container` is used and no workdir is provided
+**Relative Path Resolution**
+- Relative paths in `<project_root>/.ralph/.env` are resolved relative to `<project_root>` for `SPECIFICATION`, `EXECUTION_PLAN`, `LOG_DIR`, `ERROR_LOG`, and `OUTPUT_LOG`.
+
+Relative values in `~/.ralph/.env` and shell environment variables are used as written.
+
+**Defaults (current runtime behavior)**
+- `SPECIFICATION=.ralph/plans/SPECIFICATION.md`
+- `EXECUTION_PLAN=.ralph/plans/EXECUTION_PLAN.md`
+- `LOG_DIR=.ralph/logs`
+- `ERROR_LOG=${LOG_DIR}/ERROR_LOG.md`
+- `OUTPUT_LOG=${LOG_DIR}/OUTPUT_LOG.md`
+- `CONTAINER_NAME=` (empty)
+- `CONTAINER_WORKDIR=` (empty; runtime computes `/<basename>` when `--container` is set without `--workdir`)
+- `CONTAINER_RUNTIME=docker`
+- `USE_CODEX=0`
+- `CALLBACK=` (empty)
+
+---
+
+**Next:** [containers.md](containers.md) - Container runtime behavior, workdir defaults, and TTY rules.

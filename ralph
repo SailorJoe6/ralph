@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+START_SCRIPT="$SCRIPT_DIR/start"
+INIT_SCRIPT="$SCRIPT_DIR/init"
+UPGRADE_SCRIPT="$SCRIPT_DIR/upgrade"
+
+require_executable() {
+  local path="$1"
+  if [[ ! -x "$path" ]]; then
+    echo "Error: expected executable not found: $path" >&2
+    exit 1
+  fi
+}
+
+print_runtime_help() {
+  cat <<'EOF'
+Usage: ralph [OPTIONS]
+
+Run Ralph's design -> plan -> execute workflow from the current project root.
+
+Runtime options:
+  -u, --unattended        Full permissions; use non-interactive mode only during execute/handoff
+  -f, --freestyle         Run execute loop with prepare prompt (skip spec/plan checks)
+  -y, --yolo              Enable full permissions (interactive unless -u)
+  --codex                 Use Codex instead of Claude
+  --resume [guid]         Resume previous session (optional session ID for Claude or Codex)
+  --container <name>      Execute commands inside specified container
+  --workdir <path>        Container working directory (default: /<basename>)
+  --callback <script>     Run script after each pass
+  -h, --help              Show this help message
+
+Subcommands:
+  start                   Alias for runtime mode
+  init                    Initialize Ralph configuration for a project
+  upgrade                 Upgrade a legacy V1 project layout to V2
+EOF
+}
+
+print_start_alias_reminder() {
+  echo "Reminder: 'ralph' is the default runtime command; 'ralph start' is an alias."
+}
+
+require_executable "$START_SCRIPT"
+require_executable "$INIT_SCRIPT"
+require_executable "$UPGRADE_SCRIPT"
+
+if [[ $# -eq 0 ]]; then
+  exec "$START_SCRIPT"
+fi
+
+case "$1" in
+  -h|--help)
+    print_runtime_help
+    exit 0
+    ;;
+  start)
+    shift
+    if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+      print_start_alias_reminder
+      echo ""
+      print_runtime_help
+      exit 0
+    fi
+    print_start_alias_reminder >&2
+    exec "$START_SCRIPT" "$@"
+    ;;
+  init)
+    shift
+    exec "$INIT_SCRIPT" "$@"
+    ;;
+  upgrade)
+    shift
+    exec "$UPGRADE_SCRIPT" "$@"
+    ;;
+  *)
+    exec "$START_SCRIPT" "$@"
+    ;;
+esac

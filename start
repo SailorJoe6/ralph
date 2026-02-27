@@ -2,43 +2,29 @@
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/config.sh
+source "$SCRIPT_DIR/lib/config.sh"
 
-# Load .env file if it exists (from ralph directory)
-if [[ -f "$SCRIPT_DIR/.env" ]]; then
-  # shellcheck disable=SC1090
-  source "$SCRIPT_DIR/.env"
-fi
+PROJECT_ROOT="$(ralph_resolve_project_root)"
+ralph_load_config "$PROJECT_ROOT"
 
 # UNATTENDED must be CLI-only, ignore env variables
 UNATTENDED=0
 
-# Hardcoded prompt paths (must match .gitignore pattern)
-DESIGN_PROMPT="ralph/prompts/design.md"
-PLAN_PROMPT="ralph/prompts/plan.md"
-EXECUTE_PROMPT="ralph/prompts/execute.md"
-HANDOFF_PROMPT="ralph/prompts/handoff.md"
-PREPARE_PROMPT="ralph/prompts/prepare.md"
-BLOCKED_PROMPT="ralph/prompts/blocked.md"
-
-# Configurable planning document paths
-: "${SPECIFICATION:=ralph/plans/SPECIFICATION.md}"
-: "${EXECUTION_PLAN:=ralph/plans/EXECUTION_PLAN.md}"
-
-# Log file locations (default to ralph/logs/ from the parent directory)
-: "${LOG_DIR:=ralph/logs}"
-: "${ERROR_LOG:=$LOG_DIR/ERROR_LOG.md}"
-: "${OUTPUT_LOG:=$LOG_DIR/OUTPUT_LOG.md}"
+# Hardcoded prompt paths under the V2 project layout
+DESIGN_PROMPT="$PROJECT_ROOT/.ralph/prompts/design.md"
+PLAN_PROMPT="$PROJECT_ROOT/.ralph/prompts/plan.md"
+EXECUTE_PROMPT="$PROJECT_ROOT/.ralph/prompts/execute.md"
+HANDOFF_PROMPT="$PROJECT_ROOT/.ralph/prompts/handoff.md"
+PREPARE_PROMPT="$PROJECT_ROOT/.ralph/prompts/prepare.md"
+BLOCKED_PROMPT="$PROJECT_ROOT/.ralph/prompts/blocked.md"
+BLOCKED_DIR="$(dirname "$SPECIFICATION")/blocked"
 
 # Default behavior flags
-: "${UNATTENDED:=0}"
-: "${USE_CODEX:=0}"
-: "${FREESTYLE:=0}"
-: "${CALLBACK:=}"
-: "${CONTAINER_NAME:=}"
-: "${CONTAINER_RUNTIME:=docker}"
-: "${YOLO:=0}"
-: "${RESUME_MODE:=0}"
-: "${RESUME_SESSION:=}"
+FREESTYLE=0
+YOLO=0
+RESUME_MODE=0
+RESUME_SESSION=""
 
 # CONTAINER_WORKDIR defaults to /<basename> if using container
 # This will be set dynamically if --container is used without --workdir
@@ -46,11 +32,111 @@ BLOCKED_PROMPT="ralph/prompts/blocked.md"
 PASS=0
 RESUME_PENDING=0
 
-if [[ -n "$LOG_DIR" ]]; then
-  mkdir -p "$LOG_DIR"
-fi
-
 trap 'exit 0' INT
+
+print_runtime_usage_summary() {
+  cat >&2 <<'EOF'
+Standard runtime usage:
+  ralph
+  ralph --codex
+  ralph --unattended
+EOF
+}
+
+print_runtime_init_guidance() {
+  cat >&2 <<'EOF'
+Initialize a project root with:
+  ralph init
+
+Initialize a different path with:
+  ralph init --project <path>
+EOF
+}
+
+find_runtime_ancestor_root_for_diagnostics() {
+  local current="$PROJECT_ROOT"
+  local parent=""
+
+  while :; do
+    parent="$(dirname "$current")"
+    if [[ "$parent" == "$current" ]]; then
+      return 1
+    fi
+    if [[ -d "$parent/.ralph" ]]; then
+      printf '%s\n' "$parent"
+      return 0
+    fi
+    current="$parent"
+  done
+}
+
+enforce_runtime_project_root() {
+  local ancestor_root=""
+  local home_root=""
+
+  if [[ -d "$PROJECT_ROOT/.ralph" ]]; then
+    return 0
+  fi
+
+  if [[ -d "$PROJECT_ROOT/ralph" ]]; then
+    cat >&2 <<EOF
+Error: legacy V1 Ralph folder detected in this directory:
+  $PROJECT_ROOT/ralph
+
+Runtime mode now requires a V2 project root with '.ralph' in the current directory.
+If you intentionally want the legacy V1 flow, run:
+  ./ralph/start
+Otherwise migrate this project with:
+  ralph upgrade
+EOF
+    return 1
+  fi
+
+  ancestor_root="$(find_runtime_ancestor_root_for_diagnostics || true)"
+
+  if [[ -n "${HOME:-}" ]]; then
+    home_root="$(ralph_resolve_project_root "$HOME")"
+  fi
+
+  if [[ -n "$ancestor_root" && "$ancestor_root" != "$home_root" ]]; then
+    cat >&2 <<EOF
+Error: Ralph must be run from the project root directory.
+
+Current directory:
+  $PROJECT_ROOT
+Detected Ralph project root:
+  $ancestor_root
+
+Change to the project root and run Ralph there.
+EOF
+    print_runtime_usage_summary
+    return 1
+  fi
+
+  if [[ -n "$home_root" && -d "$home_root/.ralph" ]]; then
+    cat >&2 <<EOF
+Error: Ralph runtime requires a V2 project root in the current directory.
+Ralph runs a design -> plan -> execute loop for one project at a time.
+No project '.ralph' directory was found in this directory or its ancestors.
+
+Only user-level Ralph config was found at:
+  $home_root/.ralph
+~/.ralph stores global defaults and cannot be used as a project root.
+EOF
+    print_runtime_init_guidance
+    print_runtime_usage_summary
+    return 1
+  fi
+
+  cat >&2 <<EOF
+Error: Ralph runtime requires a V2 project root in the current directory.
+Ralph runs a design -> plan -> execute loop for one project at a time.
+No '.ralph' directory was found in the current directory or any parent directories.
+EOF
+  print_runtime_init_guidance
+  print_runtime_usage_summary
+  return 1
+}
 
 # Parse command-line arguments
 while [[ $# -gt 0 ]]; do
@@ -128,6 +214,16 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ $FREESTYLE -eq 0 ]]; then
+  if ! enforce_runtime_project_root; then
+    exit 1
+  fi
+fi
+
+if [[ -n "$LOG_DIR" ]]; then
+  mkdir -p "$LOG_DIR"
+fi
 
 # Freestyle + unattended: downgrade to yolo (elevated permissions, still interactive)
 if [[ $FREESTYLE -eq 1 && $UNATTENDED -eq 1 ]]; then
@@ -251,6 +347,7 @@ run_codex() {
       else
         codex_cmd+=(--last)
       fi
+      codex_cmd+=(continue)
     else
       codex_cmd+=(resume)
       if [[ -n "$RESUME_SESSION" ]]; then
@@ -287,27 +384,37 @@ run_claude() {
   local noninteractive="$1"
   local prompt_text="$2"
 
-  local resume_flags=()
+  local claude_cmd=(claude "${PERM_CLAUDE_FLAGS[@]}")
+
   if [[ $RESUME_PENDING -eq 1 ]]; then
     if [[ -n "$RESUME_SESSION" ]]; then
-      resume_flags=(--resume "$RESUME_SESSION")
+      claude_cmd+=(--resume "$RESUME_SESSION")
     else
-      resume_flags=(--continue)
+      claude_cmd+=(--continue)
+    fi
+    if [[ "$noninteractive" == "1" ]]; then
+      claude_cmd+=(-p continue)
+    fi
+  else
+    if [[ "$noninteractive" == "1" ]]; then
+      claude_cmd+=(-p "$prompt_text")
+    else
+      claude_cmd+=("$prompt_text")
     fi
   fi
 
   if [[ -n "$CONTAINER_NAME" ]]; then
     set_container_exec_flags "$([[ "$noninteractive" == "1" ]] && echo 0 || echo 1)"
     if [[ "$noninteractive" == "1" ]]; then
-      run_noninteractive_cmd "$CONTAINER_RUNTIME" exec "${CONTAINER_EXEC_FLAGS[@]}" -w "$CONTAINER_WORKDIR" "$CONTAINER_NAME" claude "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" -p "$prompt_text"
+      run_noninteractive_cmd "$CONTAINER_RUNTIME" exec "${CONTAINER_EXEC_FLAGS[@]}" -w "$CONTAINER_WORKDIR" "$CONTAINER_NAME" "${claude_cmd[@]}"
     else
-      container_exec bash -c 'trap "exit 130" INT; exec claude "$@"' _ "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" "$prompt_text"
+      container_exec bash -c 'trap "exit 130" INT; exec "$@"' _ "${claude_cmd[@]}"
     fi
   else
     if [[ "$noninteractive" == "1" ]]; then
-      run_noninteractive_cmd claude "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" -p "$prompt_text"
+      run_noninteractive_cmd "${claude_cmd[@]}"
     else
-      bash -c 'trap "exit 130" INT; exec claude "$@"' _ "${PERM_CLAUDE_FLAGS[@]}" "${resume_flags[@]}" "$prompt_text"
+      bash -c 'trap "exit 130" INT; exec "$@"' _ "${claude_cmd[@]}"
     fi
   fi
 }
@@ -341,7 +448,6 @@ while :; do
       exit 1
     else
       # Neither planning document exists - check if blocked before entering design mode
-      BLOCKED_DIR="ralph/plans/blocked"
       if [[ -f "$BLOCKED_DIR/SPECIFICATION.md" || -f "$BLOCKED_DIR/EXECUTION_PLAN.md" ]]; then
         PROMPT="$BLOCKED_PROMPT"
         BLOCKED_MODE=1
@@ -365,27 +471,27 @@ while :; do
     echo ""
     missing_any=0
     if [[ ! -f "$DESIGN_PROMPT" ]]; then
-      echo "  cp ralph/prompts/design.example.md ralph/prompts/design.md"
+      echo "  cp \"$SCRIPT_DIR/prompts/design.example.md\" \"$DESIGN_PROMPT\""
       missing_any=1
     fi
     if [[ ! -f "$PLAN_PROMPT" ]]; then
-      echo "  cp ralph/prompts/plan.example.md ralph/prompts/plan.md"
+      echo "  cp \"$SCRIPT_DIR/prompts/plan.example.md\" \"$PLAN_PROMPT\""
       missing_any=1
     fi
     if [[ ! -f "$EXECUTE_PROMPT" ]]; then
-      echo "  cp ralph/prompts/execute.example.md ralph/prompts/execute.md"
+      echo "  cp \"$SCRIPT_DIR/prompts/execute.example.md\" \"$EXECUTE_PROMPT\""
       missing_any=1
     fi
     if [[ ! -f "$PREPARE_PROMPT" ]]; then
-      echo "  cp ralph/prompts/prepare.example.md ralph/prompts/prepare.md"
+      echo "  cp \"$SCRIPT_DIR/prompts/prepare.example.md\" \"$PREPARE_PROMPT\""
       missing_any=1
     fi
     if [[ ! -f "$HANDOFF_PROMPT" ]]; then
-      echo "  cp ralph/prompts/handoff.example.md ralph/prompts/handoff.md"
+      echo "  cp \"$SCRIPT_DIR/prompts/handoff.example.md\" \"$HANDOFF_PROMPT\""
       missing_any=1
     fi
     if [[ ! -f "$BLOCKED_PROMPT" ]]; then
-      echo "  Create ralph/prompts/blocked.md"
+      echo "  cp \"$SCRIPT_DIR/prompts/blocked.example.md\" \"$BLOCKED_PROMPT\""
       missing_any=1
     fi
     if [[ $missing_any -eq 0 ]]; then
@@ -448,10 +554,9 @@ while :; do
     exit 1
   fi
 
-  # Run handoff (execute phase only, and only if planning docs still exist or in freestyle mode)
-  if [[ $EXECUTE_MODE -eq 1 ]]; then
-    # Only run handoff if we're in freestyle mode OR both planning docs still exist
-    if [[ $FREESTYLE -eq 1 || (-f "$SPECIFICATION" && -f "$EXECUTION_PLAN") ]]; then
+  # Run handoff only for non-freestyle execute passes when both planning docs still exist.
+  if [[ $EXECUTE_MODE -eq 1 && $FREESTYLE -eq 0 ]]; then
+    if [[ -f "$SPECIFICATION" && -f "$EXECUTION_PLAN" ]]; then
       if [[ -f "$HANDOFF_PROMPT" ]]; then
         handoff_text="$(cat "$HANDOFF_PROMPT")"
         handoff_require_tty=1
