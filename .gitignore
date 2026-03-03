@@ -15,3 +15,7 @@ prompts/blocked.md
 # Log files (created under ralph/logs/)
 logs/*
 !logs/.keep
+
+# Dolt database files (added by bd init)
+.dolt/
+*.db

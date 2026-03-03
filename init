@@ -67,6 +67,19 @@ ensure_top_level_dir() {
   fi
 }
 
+ensure_logs_gitignore() {
+  local logs_gitignore="$PROJECT_ROOT/.ralph/logs/.gitignore"
+
+  if [[ -e "$logs_gitignore" ]]; then
+    return 0
+  fi
+
+  cat > "$logs_gitignore" <<'EOF'
+*
+!.gitignore
+EOF
+}
+
 copy_prompt_templates() {
   local prompt_name=""
   local template_path=""
@@ -226,6 +239,7 @@ fi
 
 ensure_top_level_dir ".ralph"
 mkdir -p "$PROJECT_ROOT/.ralph/prompts" "$PROJECT_ROOT/.ralph/plans" "$PROJECT_ROOT/.ralph/logs"
+ensure_logs_gitignore
 
 cp "$SCRIPT_DIR/.env.example" "$PROJECT_ROOT/.ralph/.env.example"
 copy_prompt_templates

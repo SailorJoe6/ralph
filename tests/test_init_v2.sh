@@ -111,6 +111,8 @@ assert_dir "$PROJECT1/.ralph" "init creates .ralph"
 assert_dir "$PROJECT1/.ralph/prompts" "init creates prompts dir"
 assert_dir "$PROJECT1/.ralph/plans" "init creates plans dir"
 assert_dir "$PROJECT1/.ralph/logs" "init creates logs dir"
+assert_exists "$PROJECT1/.ralph/logs/.gitignore" "init creates logs gitignore"
+assert_eq "$(cat "$PROJECT1/.ralph/logs/.gitignore")" $'*\n!.gitignore' "logs gitignore default content"
 assert_file_equals "$RALPH_DIR/.env.example" "$PROJECT1/.ralph/.env.example" "init overwrites .env.example from bundled template"
 assert_file_equals "$RALPH_DIR/prompts/execute.example.md" "$PROJECT1/.ralph/prompts/execute.md" "default execute template"
 assert_file_equals "$RALPH_DIR/prompts/handoff.example.md" "$PROJECT1/.ralph/prompts/handoff.md" "default handoff template"
@@ -121,9 +123,12 @@ PROJECT2="$TMP_ROOT/project-existing"
 mkdir -p "$PROJECT2/.ralph/prompts"
 printf 'KEEP PLAN CONTENT\n' > "$PROJECT2/.ralph/prompts/plan.md"
 printf 'OLD ENV CONTENT\n' > "$PROJECT2/.ralph/.env.example"
+mkdir -p "$PROJECT2/.ralph/logs"
+printf 'custom-ignore\n' > "$PROJECT2/.ralph/logs/.gitignore"
 run_cmd "$RALPH_BIN" init --project "$PROJECT2"
 assert_eq "$RUN_STATUS" "0" "init existing dir exit status"
 assert_eq "$(cat "$PROJECT2/.ralph/prompts/plan.md")" "KEEP PLAN CONTENT" "existing prompt preserved"
+assert_eq "$(cat "$PROJECT2/.ralph/logs/.gitignore")" "custom-ignore" "existing logs gitignore preserved"
 assert_file_equals "$RALPH_DIR/.env.example" "$PROJECT2/.ralph/.env.example" ".env.example overwritten"
 
 # Case 3: --project relative missing path is created.
@@ -164,7 +169,7 @@ assert_file_equals "$RALPH_DIR/prompts/blocked.example.md" "$PROJECT3/.ralph/pro
 # Re-run with existing .beads should remain successful and skip repeated bd init.
 run_cmd env PATH="$FAKE_BIN:$PATH" BD_LOG="$BD_LOG" "$RALPH_BIN" init --project "$PROJECT3" --beads
 assert_eq "$RUN_STATUS" "0" "re-run init --beads exit status"
-assert_eq "$(wc -l < "$BD_LOG")" "1" "bd init not repeated when .beads already exists"
+assert_eq "$(wc -l < "$BD_LOG" | tr -d '[:space:]')" "1" "bd init not repeated when .beads already exists"
 
 # Case 5: --stealth excludes only newly created folders and symlink setup targets .ralph prompts.
 PROJECT4="$TMP_ROOT/project-stealth"

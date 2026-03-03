@@ -24,6 +24,7 @@ ralph init [OPTIONS]
   - `<project_root>/.ralph/prompts`
   - `<project_root>/.ralph/plans`
   - `<project_root>/.ralph/logs`
+- Create `<project_root>/.ralph/logs/.gitignore` when missing so log files under `.ralph/logs/` stay untracked by default.
 - Create active prompt files in `<project_root>/.ralph/prompts/` from bundled templates, preserving any pre-existing active prompt files.
 - Copy the bundled runtime `.env.example` to `<project_root>/.ralph/.env.example` (always overwrite with latest example file).
 - With `--beads`, run `bd init` when `.beads/` does not already exist and select `.example.beads.md` variants when they exist (`execute`, `handoff`, `prepare`), falling back to `.example.md` otherwise.
