@@ -4,21 +4,24 @@ IMPORTANT: Ralph V2 has been merged.  Check the installation steps below to get 
 
 ## Introduction
 
-Ralph implements Geoff Huntly's Ralph Wiggum loop, a design → plan → execute workflow for AI-assisted development with support for Claude and Codex CLI tools.
+Ralph implements Geoff Huntly's Ralph Wiggum loop for AI-assisted development with support for Claude and Codex CLI tools.
 
 ## What is Ralph?
 
 Ralph orchestrates a structured workflow for AI-assisted development:
 
-1. **Design Phase** - Discuss requirements with AI, then it generates a detailed specification
-2. **Plan Phase** - AI creates detailed execution plan based on specification, you review it and work with the AI to get it perfect. 
-3. **Execute Phase** - AI implements the plan one step at a time, with a clean context window for each step. Optional unattended mode for extreme productivity.
-4. **Handoff Phase** - After each step, the AI updates planning docs with context for next session before clearing it's context window (runs automatically after each execute pass)
+1. **Free-Form Interactive Mode (default entry)** - Start with open-ended conversation via `prepare.md` when no planning docs exist.
+2. **Design Prompt (on demand)** - Use `/design` (or run `design.md`) whenever you want to generate or revise `SPECIFICATION.md`.
+3. **Plan Phase** - When `SPECIFICATION.md` exists, AI creates detailed execution plan and writes `EXECUTION_PLAN.md`.
+4. **Execute Phase** - When both planning docs exist, AI implements the plan step by step. Optional unattended mode for extreme productivity.
+5. **Handoff Phase** - After each execute pass, AI updates planning docs with context for next session before clearing its context window.
 
-Ralph automatically progresses through phases based on which planning documents exist:
-- No planning docs → runs design phase
+Ralph automatically progresses based on which planning documents exist:
+- No planning docs → runs free-form interactive mode (`prepare.md`)
 - `SPECIFICATION.md` exists → runs plan phase
 - Both specification and execution plan exist → runs execute phase (with automatic handoff after each pass)
+
+Once execute completes and archives/removes the active spec/plan docs, the next `ralph` run drops back into free-form interactive mode.
 
 The workflow loops continuously, allowing iterative development with AI assistance.
 
@@ -92,10 +95,10 @@ cp ~/.local/share/ralph/prompts/blocked.example.md .ralph/prompts/blocked.md
 ralph init --codex --beads
 # or: ralph init --claude --beads
 
-# Basic usage (interactive, starts design/plan/execute based on docs)
+# Basic usage (interactive, starts free-form/plan/execute based on planning docs)
 ralph --codex
 
-# Unattended execution (interactive design and plan, fully unattended execute phase)
+# Unattended execution (interactive free-form and plan, fully unattended execute phase)
 ralph --codex --unattended
 ```
 
@@ -140,7 +143,7 @@ Usage: ralph [OPTIONS]
 
 Options:
   -u, --unattended        Run in unattended mode (execute phase only, CLI-only)
-  -f, --freestyle         Run execute loop with prepare prompt (skip spec/plan checks)
+  -f, --freestyle         Run execute loop with prepare prompt (skip spec/plan checks even when docs exist)
   -y, --yolo              Enable all permissions without unattended execution
   --codex                 Use Codex instead of Claude
   --container <name>      Execute commands inside specified container
@@ -198,24 +201,31 @@ ln -s ../../.ralph/prompts/prepare.md .claude/commands/prepare.md
 
 Then you can run `/design`, `/plan`, `/execute`, `/handoff`, or `/prepare` directly in your AI assistant.
 
-**Note:** This is optional. You can always invoke ralph via `ralph` without symlinks. The handoff phase runs automatically after each execute pass, but the `/handoff` command can be useful for manual handoff preparation. The `/prepare` command is used for freestyle mode.
+**Note:** This is optional. You can always invoke ralph via `ralph` without symlinks. The handoff phase runs automatically after each execute pass, but the `/handoff` command can be useful for manual handoff preparation. `/design` is useful when you want to create/update a spec on demand, and `/prepare` is used by default free-form entry and by `--freestyle`.
 
 ## Workflow Phases
 
-### Design Phase
+### Free-Form Interactive Mode (Default Entry)
 
-**When:** No planning documents exist
+**When:** No planning documents exist (and no blocked planning docs exist)
 
 **What happens:**
-- Interactive conversation with AI about requirements
-- AI helps you think through the problem and solution
-- Creates the specification document at `SPECIFICATION` (default: `.ralph/plans/SPECIFICATION.md`)
-- Next run enters plan phase
+- Ralph runs `prepare.md` in interactive mode
+- You can explore ideas, ask questions, and discuss work without immediately entering formal design
+- If you create `SPECIFICATION.md`, the next run enters plan phase
 
 **Invocation:**
 ```bash
 ralph
 ```
+
+### Design Prompt (On Demand)
+
+**When:** You explicitly invoke `/design` (or otherwise run `design.md`)
+
+**What happens:**
+- Structured requirements discussion to produce/update `SPECIFICATION.md`
+- Once `SPECIFICATION.md` exists, the next `ralph` run enters plan phase
 
 ### Plan Phase
 
@@ -271,13 +281,13 @@ Yolo mode enables full permissions but keeps the session interactive. It is inte
 **When:** Using `--freestyle` flag (ignores planning documents)
 
 **What happens:**
-- AI uses the `prepare.md` prompt instead of design/plan/execute workflow
-- Skips specification and execution plan checks entirely
+- AI always uses the `prepare.md` prompt
+- Skips specification and execution plan checks entirely, even when they exist
 - Runs in execute loop mode (loops continuously until interrupted)
 - Does not run automatic handoff between freestyle passes
 - Must be run in interactive mode (unattended not supported)
 
-**Use case:** Quick iterations or exploratory work without formal planning documents. Useful for small changes, experiments, or when you want to work without the structure of the design → plan → execute workflow.
+**Use case:** Break out of the normal planning-doc-driven flow at any time, including when active spec/plan files already exist.
 
 **Invocation:**
 ```bash
@@ -365,7 +375,7 @@ rm -f .ralph/plans/SPECIFICATION.md .ralph/plans/EXECUTION_PLAN.md
 
 If you changed planning paths in `.ralph/.env`, remove those configured files instead.
 
-Next `ralph` will begin at the design phase.
+Next `ralph` will begin in free-form interactive mode (`prepare.md`).
 
 ## Troubleshooting
 
@@ -409,10 +419,10 @@ which codex
 ### Basic interactive workflow
 
 ```bash
-# Start design phase
+# Start in default free-form interactive mode
 ralph
 
-# After specification is created, run plan phase
+# After specification is created (for example via /design), run plan phase
 ralph
 
 # After plan is created, run execute phase

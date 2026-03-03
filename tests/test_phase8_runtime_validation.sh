@@ -102,9 +102,9 @@ mkdir -p "$HOME1" "$PROJECT1/.ralph/prompts"
 
 run_start "$PROJECT1" "$HOME1" "" "$START_BIN"
 assert_eq "$RUN_STATUS" "1" "missing prompt exit status"
-assert_contains "$RUN_STDOUT$RUN_STDERR" "Prompt file not found: $PROJECT1/.ralph/prompts/design.md" "missing prompt path"
+assert_contains "$RUN_STDOUT$RUN_STDERR" "Prompt file not found: $PROJECT1/.ralph/prompts/prepare.md" "missing prompt path"
 assert_contains "$RUN_STDOUT$RUN_STDERR" "/prompts/design.example.md" "missing prompt design template guidance"
-assert_contains "$RUN_STDOUT$RUN_STDERR" "$PROJECT1/.ralph/prompts/design.md" "missing prompt destination guidance"
+assert_contains "$RUN_STDOUT$RUN_STDERR" "$PROJECT1/.ralph/prompts/prepare.md" "missing prompt destination guidance"
 
 # Case 2: unattended execute mode writes logs to .ralph/logs.
 HOME2="$TMP_ROOT/home-unattended"
@@ -198,7 +198,7 @@ printf 'HANDOFF_SHOULD_NOT_RUN_TEXT\n' > "$PROJECT3B/.ralph/prompts/handoff.md"
 rm -f "$ARGS_LOG3B" "$COUNT_FILE3B"
 run_start "$PROJECT3B" "$HOME3B" "$FAKE_BIN3B" env ARGS_LOG="$ARGS_LOG3B" COUNT_FILE="$COUNT_FILE3B" "$START_BIN" --freestyle
 assert_eq "$RUN_STATUS" "1" "freestyle no-handoff two-pass exit status"
-assert_eq "$(wc -l < "$ARGS_LOG3B")" "2" "freestyle no-handoff produced two main-loop calls"
+assert_eq "$(wc -l < "$ARGS_LOG3B" | tr -d '[:space:]')" "2" "freestyle no-handoff produced two main-loop calls"
 FREESTYLE_NO_HANDOFF_FIRST="$(sed -n '1p' "$ARGS_LOG3B")"
 FREESTYLE_NO_HANDOFF_SECOND="$(sed -n '2p' "$ARGS_LOG3B")"
 assert_contains "$FREESTYLE_NO_HANDOFF_FIRST" "[PREPARE_NO_HANDOFF_TEXT]" "freestyle no-handoff first pass uses prepare prompt"
@@ -238,30 +238,30 @@ echo "resume test stop" >&2
 exit 7
 EOF_FAKE_CLAUDE_RESUME
 chmod +x "$FAKE_BIN4/claude"
-printf 'DESIGN_PROMPT_TEXT\n' > "$PROJECT4/.ralph/prompts/design.md"
+printf 'PREPARE_PROMPT_TEXT\n' > "$PROJECT4/.ralph/prompts/prepare.md"
 
 rm -f "$ARGS_LOG4" "$COUNT_FILE4"
 run_start "$PROJECT4" "$HOME4" "$FAKE_BIN4" env ARGS_LOG="$ARGS_LOG4" COUNT_FILE="$COUNT_FILE4" "$START_BIN" --resume
 assert_eq "$RUN_STATUS" "1" "--resume two-pass exit status"
-assert_eq "$(wc -l < "$ARGS_LOG4")" "2" "--resume produced two calls"
+assert_eq "$(wc -l < "$ARGS_LOG4" | tr -d '[:space:]')" "2" "--resume produced two calls"
 RESUME_FIRST="$(sed -n '1p' "$ARGS_LOG4")"
 RESUME_SECOND="$(sed -n '2p' "$ARGS_LOG4")"
 assert_contains "$RESUME_FIRST" "[--continue]" "--resume uses --continue on first pass"
-assert_not_contains "$RESUME_FIRST" "[DESIGN_PROMPT_TEXT]" "--resume first pass does not send phase prompt in interactive mode"
+assert_not_contains "$RESUME_FIRST" "[PREPARE_PROMPT_TEXT]" "--resume first pass does not send phase prompt in interactive mode"
 assert_not_contains "$RESUME_SECOND" "[--continue]" "--resume cleared after first pass"
-assert_contains "$RESUME_SECOND" "[DESIGN_PROMPT_TEXT]" "--resume second pass uses phase prompt after resume clears"
+assert_contains "$RESUME_SECOND" "[PREPARE_PROMPT_TEXT]" "--resume second pass uses phase prompt after resume clears"
 
 rm -f "$ARGS_LOG4" "$COUNT_FILE4"
 run_start "$PROJECT4" "$HOME4" "$FAKE_BIN4" env ARGS_LOG="$ARGS_LOG4" COUNT_FILE="$COUNT_FILE4" "$START_BIN" --resume session-123
 assert_eq "$RUN_STATUS" "1" "--resume <id> two-pass exit status"
-assert_eq "$(wc -l < "$ARGS_LOG4")" "2" "--resume <id> produced two calls"
+assert_eq "$(wc -l < "$ARGS_LOG4" | tr -d '[:space:]')" "2" "--resume <id> produced two calls"
 RESUME_ID_FIRST="$(sed -n '1p' "$ARGS_LOG4")"
 RESUME_ID_SECOND="$(sed -n '2p' "$ARGS_LOG4")"
 assert_contains "$RESUME_ID_FIRST" "[--resume][session-123]" "--resume <id> uses provided id on first pass"
-assert_not_contains "$RESUME_ID_FIRST" "[DESIGN_PROMPT_TEXT]" "--resume <id> first pass does not send phase prompt in interactive mode"
+assert_not_contains "$RESUME_ID_FIRST" "[PREPARE_PROMPT_TEXT]" "--resume <id> first pass does not send phase prompt in interactive mode"
 assert_not_contains "$RESUME_ID_SECOND" "[--resume]" "--resume <id> cleared after first pass"
 assert_not_contains "$RESUME_ID_SECOND" "[session-123]" "--resume <id> value not reused after first pass"
-assert_contains "$RESUME_ID_SECOND" "[DESIGN_PROMPT_TEXT]" "--resume <id> second pass uses phase prompt after resume clears"
+assert_contains "$RESUME_ID_SECOND" "[PREPARE_PROMPT_TEXT]" "--resume <id> second pass uses phase prompt after resume clears"
 
 # Case 4b: unattended Claude resume sends only "continue" on first pass.
 HOME4B="$TMP_ROOT/home-resume-unattended-claude"
@@ -301,7 +301,7 @@ printf 'plan\n' > "$PROJECT4B/.ralph/plans/EXECUTION_PLAN.md"
 rm -f "$ARGS_LOG4B" "$COUNT_FILE4B"
 run_start "$PROJECT4B" "$HOME4B" "$FAKE_BIN4B" env ARGS_LOG="$ARGS_LOG4B" COUNT_FILE="$COUNT_FILE4B" "$START_BIN" --resume --unattended
 assert_eq "$RUN_STATUS" "1" "--resume --unattended Claude two-pass exit status"
-assert_eq "$(wc -l < "$ARGS_LOG4B")" "2" "--resume --unattended Claude produced two calls"
+assert_eq "$(wc -l < "$ARGS_LOG4B" | tr -d '[:space:]')" "2" "--resume --unattended Claude produced two calls"
 RESUME_UNATTENDED_CLAUDE_FIRST="$(sed -n '1p' "$ARGS_LOG4B")"
 RESUME_UNATTENDED_CLAUDE_SECOND="$(sed -n '2p' "$ARGS_LOG4B")"
 assert_contains "$RESUME_UNATTENDED_CLAUDE_FIRST" "[--continue][-p][continue]" "Claude unattended resume first pass uses only continue prompt"
@@ -340,19 +340,19 @@ echo "resume codex stop" >&2
 exit 7
 EOF_FAKE_CODEX_RESUME
 chmod +x "$FAKE_BIN4C/codex"
-printf 'CODEX_DESIGN_PROMPT_TEXT\n' > "$PROJECT4C/.ralph/prompts/design.md"
+printf 'CODEX_PREPARE_PROMPT_TEXT\n' > "$PROJECT4C/.ralph/prompts/prepare.md"
 
 rm -f "$ARGS_LOG4C" "$COUNT_FILE4C"
 run_start "$PROJECT4C" "$HOME4C" "$FAKE_BIN4C" env ARGS_LOG="$ARGS_LOG4C" COUNT_FILE="$COUNT_FILE4C" "$START_BIN" --codex --resume
 assert_eq "$RUN_STATUS" "1" "--codex --resume interactive two-pass exit status"
-assert_eq "$(wc -l < "$ARGS_LOG4C")" "2" "--codex --resume interactive produced two calls"
+assert_eq "$(wc -l < "$ARGS_LOG4C" | tr -d '[:space:]')" "2" "--codex --resume interactive produced two calls"
 RESUME_CODEX_FIRST="$(sed -n '1p' "$ARGS_LOG4C")"
 RESUME_CODEX_SECOND="$(sed -n '2p' "$ARGS_LOG4C")"
 assert_contains "$RESUME_CODEX_FIRST" "[resume][--last]" "Codex interactive resume first pass uses resume --last"
-assert_not_contains "$RESUME_CODEX_FIRST" "[CODEX_DESIGN_PROMPT_TEXT]" "Codex interactive resume first pass does not send phase prompt"
+assert_not_contains "$RESUME_CODEX_FIRST" "[CODEX_PREPARE_PROMPT_TEXT]" "Codex interactive resume first pass does not send phase prompt"
 assert_not_contains "$RESUME_CODEX_FIRST" "[continue]" "Codex interactive resume does not send continue token"
 assert_not_contains "$RESUME_CODEX_SECOND" "[resume]" "Codex interactive resume cleared after first pass"
-assert_contains "$RESUME_CODEX_SECOND" "[CODEX_DESIGN_PROMPT_TEXT]" "Codex interactive second pass uses phase prompt"
+assert_contains "$RESUME_CODEX_SECOND" "[CODEX_PREPARE_PROMPT_TEXT]" "Codex interactive second pass uses phase prompt"
 
 # Case 4d: unattended Codex resume sends only "continue" on first pass.
 HOME4D="$TMP_ROOT/home-resume-unattended-codex"
@@ -392,7 +392,7 @@ printf 'plan\n' > "$PROJECT4D/.ralph/plans/EXECUTION_PLAN.md"
 rm -f "$ARGS_LOG4D" "$COUNT_FILE4D"
 run_start "$PROJECT4D" "$HOME4D" "$FAKE_BIN4D" env ARGS_LOG="$ARGS_LOG4D" COUNT_FILE="$COUNT_FILE4D" "$START_BIN" --codex --resume --unattended
 assert_eq "$RUN_STATUS" "1" "--codex --resume --unattended two-pass exit status"
-assert_eq "$(wc -l < "$ARGS_LOG4D")" "2" "--codex --resume --unattended produced two calls"
+assert_eq "$(wc -l < "$ARGS_LOG4D" | tr -d '[:space:]')" "2" "--codex --resume --unattended produced two calls"
 RESUME_UNATTENDED_CODEX_FIRST="$(sed -n '1p' "$ARGS_LOG4D")"
 RESUME_UNATTENDED_CODEX_SECOND="$(sed -n '2p' "$ARGS_LOG4D")"
 assert_contains "$RESUME_UNATTENDED_CODEX_FIRST" "[exec][resume][--last][continue]" "Codex unattended resume first pass uses only continue token"

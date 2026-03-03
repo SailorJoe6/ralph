@@ -1,6 +1,6 @@
 # Ralph Runtime
 
-`ralph` runs Ralph's design -> plan -> execute loop. It chooses a prompt based on planning docs (or freestyle), invokes Claude or Codex, and repeats until interrupted, or the agent becomes blocked, or the agent completes all the work defined in the spec and plan.
+`ralph` runs Ralph's planning-doc-driven loop. It chooses a prompt based on planning docs (or freestyle), invokes Claude or Codex, and repeats until interrupted, or the agent becomes blocked, or the agent completes all the work defined in the spec and plan.
 
 `ralph start` is an alias and prints a reminder that `ralph` alone is fine.
 
@@ -14,7 +14,7 @@ ralph start [OPTIONS]
 - `--codex` Use Codex instead of Claude.
 - `-y, --yolo` Enable full permissions while staying interactive.
 - `-u, --unattended` Run non-interactive execution with full permissions during execute and handoff.
-- `-f, --freestyle` Run execute loop with the prepare prompt, skipping spec/plan checks.
+- `-f, --freestyle` Run execute loop with the prepare prompt, skipping spec/plan checks even when planning docs exist.
 - `--resume [guid]` Resume a previous session on the first pass only. `guid` is optional for both Codex and Claude.
 - `--container <name>` Execute commands inside a dev container using the configured container runtime.
 - `--workdir <path>` Set container working directory (defaults to `/<basename>` when `--container` is used).
@@ -26,8 +26,14 @@ ralph start [OPTIONS]
 - `--callback` must be executable and resolvable by `command -v`.
 - `--container` requires the configured container runtime to exist.
 
+**Phase Selection In Normal Runtime (`ralph`)**
+- Both `SPECIFICATION.md` and `EXECUTION_PLAN.md` exist: execute prompt.
+- Only `SPECIFICATION.md` exists: plan prompt.
+- Neither exists: prepare prompt (free-form interactive entry mode), unless blocked docs are present.
+- `EXECUTION_PLAN.md` exists without `SPECIFICATION.md`: error and exit.
+
 **Project Root Enforcement**
-- In normal design/plan/execute flow, `ralph start` must be called from a project root.
+- In normal free-form/plan/execute flow, `ralph start` must be called from a project root.
 - In `--freestyle`, runtime skips project-root enforcement and can run from any current directory.
 - Outside freestyle, the script checks for a `.ralph/` folder in the current working directory, and prompts you to run `ralph init` if not found.
 - Outside freestyle, if `ralph/` (legacy V1 folder) is present instead, runtime hard-fails with migration guidance (`ralph/start` for legacy flow, or `ralph upgrade` to switch current project to V2).

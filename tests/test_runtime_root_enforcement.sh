@@ -77,8 +77,8 @@ chmod +x "$FAKE_BIN/claude"
 VALID_HOME="$TMP_ROOT/home-valid"
 VALID_ROOT="$TMP_ROOT/valid-project"
 mkdir -p "$VALID_HOME" "$VALID_ROOT/.ralph/prompts"
-cat > "$VALID_ROOT/.ralph/prompts/design.md" <<'EOF'
-Design prompt
+cat > "$VALID_ROOT/.ralph/prompts/prepare.md" <<'EOF'
+Prepare prompt
 EOF
 
 run_start "$VALID_ROOT" "$VALID_HOME"

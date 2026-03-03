@@ -12,7 +12,7 @@ ralph_load_config "$PROJECT_ROOT"
 UNATTENDED=0
 
 # Hardcoded prompt paths under the V2 project layout
-DESIGN_PROMPT="$PROJECT_ROOT/.ralph/prompts/design.md"
+DESIGN_PROMPT="$PROJECT_ROOT/.ralph/prompts/prepare.md"
 PLAN_PROMPT="$PROJECT_ROOT/.ralph/prompts/plan.md"
 EXECUTE_PROMPT="$PROJECT_ROOT/.ralph/prompts/execute.md"
 HANDOFF_PROMPT="$PROJECT_ROOT/.ralph/prompts/handoff.md"

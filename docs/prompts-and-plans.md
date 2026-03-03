@@ -1,9 +1,9 @@
 # Prompts And Planning Docs
 
-The ralph script selects prompts to feed into claude or codex in order to control the exection flow.  
+The `ralph` script selects prompts to feed into Claude or Codex in order to control execution flow.
 
 **Runtime Prompt Lookup**
-`ralph` reads active prompt files from `<project_root>/.ralph/prompts/` by default. see [configuration.md](configuration.md).
+`ralph` reads active prompt files from `<project_root>/.ralph/prompts/` by default. See [configuration.md](configuration.md).
 
 Required prompt files:
 - `.ralph/prompts/design.md`
@@ -21,10 +21,11 @@ Required prompt files:
 - If a required runtime prompt is missing, `ralph` exits and prints prompt-creation guidance.
 
 **Planning Docs**
-- The ralph scriot chooses which mode to enter on every iteration in accordance with the location of `SPECIFICATION.md` and `EXECUTION_PLAN.md`.
-    - when neither file exists, Ralph feeds the design.md prompt to Claude or Codex in interactive mode. 
-    - when only `SPECIFICATION.md` exists, Ralph feeds the plan.md prompt to Claude or Codex in interactive mode.
-    - when both files exist, Ralph feeds the execute.md prompt to Claude or Codex.  Flags control whehter this happens in interactive or unnattended mode.
+- The runtime chooses which mode to enter on every iteration based on `SPECIFICATION.md` and `EXECUTION_PLAN.md`.
+- When neither file exists, Ralph feeds `prepare.md` to Claude or Codex in interactive mode (default free-form entry).
+- When only `SPECIFICATION.md` exists, Ralph feeds `plan.md` to Claude or Codex in interactive mode.
+- When both files exist, Ralph feeds `execute.md` to Claude or Codex. Flags control whether this happens in interactive or unattended mode.
+- `design.md` remains available for on-demand use (for example via slash commands) when you want to create or revise `SPECIFICATION.md`.
 
 - By default, these plan files are expected at `.ralph/plans/SPECIFICATION.md` and `.ralph/plans/EXECUTION_PLAN.md`.
 - This is all configurable via environment variables; see [configuration.md](configuration.md).

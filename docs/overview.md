@@ -1,11 +1,12 @@
 # Overview
 
-Ralph is SailorJoe's implementation of Geoffry Huntly's "Ralph Wiggum Loop": a reusable design -> plan -> execute workflow for AI-assisted development. It loops continuously until interrupted or until planning docs indicate there is no remaining work.
+Ralph is SailorJoe's implementation of Geoffry Huntly's "Ralph Wiggum Loop": a reusable planning-doc-driven workflow for AI-assisted development. It loops continuously until interrupted or until planning docs indicate there is no remaining work.
 
-Runtime mode requires a V2 project root for the standard design -> plan -> execute flow: the current working directory must contain a local `.ralph/` folder. Run `ralph init` in the root folder of any project to set up Ralph to help you with that project. Freestyle is the exception and skips project-root enforcement.
+Runtime mode requires a V2 project root for the standard free-form -> plan -> execute flow: the current working directory must contain a local `.ralph/` folder. Run `ralph init` in the root folder of any project to set up Ralph to help you with that project. Freestyle is the exception and skips project-root enforcement.
 
 **Phases**
-- Design: if no planning docs exist, Ralph runs the design prompt and expects the agent to produce `SPECIFICATION.md`.
+- Free-form interactive entry: if no planning docs exist, Ralph runs the prepare prompt.
+- Design prompt (on demand): invoke `/design` (or run `design.md`) when you want the agent to produce/update `SPECIFICATION.md`.
 - Plan: if `SPECIFICATION.md` exists but `EXECUTION_PLAN.md` does not, Ralph runs the plan prompt and expects the agent to produce `EXECUTION_PLAN.md`.
 - Execute: if both planning docs exist, Ralph runs the execute prompt and then handoff.
 - Handoff: after each execute pass, Ralph runs the handoff prompt to capture context for the next session.
@@ -13,11 +14,11 @@ Runtime mode requires a V2 project root for the standard design -> plan -> execu
 **Planning Docs And Phase Selection**
 - Both `SPECIFICATION.md` and `EXECUTION_PLAN.md` present: execute phase.
 - Only `SPECIFICATION.md` present: plan phase.
-- Neither present: design phase.
+- Neither present: free-form interactive mode via `prepare.md` (unless blocked docs are present).
 - `EXECUTION_PLAN.md` without `SPECIFICATION.md`: error and exit.
 
 **Freestyle Mode**
-- `ralph --freestyle` skips planning-doc checks and runs the prepare prompt in interactive mode.
+- `ralph --freestyle` skips planning-doc checks and always runs the prepare prompt in interactive mode.
 - Freestyle can run outside a project root; prompt/log/default paths are resolved from the current directory.
 - Freestyle is always interactive. If `--unattended` is passed with `--freestyle`, Ralph treats it as `--yolo` (elevated permissions, still interactive). See [permissions.md](permissions.md).
 
