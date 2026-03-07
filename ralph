@@ -26,6 +26,7 @@ Runtime options:
   -f, --freestyle         Run execute loop with prepare prompt (skip spec/plan checks)
   -y, --yolo              Enable full permissions (interactive unless -u)
   --codex                 Use Codex instead of Claude
+  --claude                Use Claude instead of Codex
   --resume [guid]         Resume previous session (optional session ID for Claude or Codex)
   --container <name>      Execute commands inside specified container
   --workdir <path>        Container working directory (default: /<basename>)

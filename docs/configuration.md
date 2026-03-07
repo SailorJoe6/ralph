@@ -13,6 +13,8 @@ Prompt file paths are hardcoded by runtime script and are not loaded from `.env`
 
 `UNATTENDED` is CLI-only and ignores environment values.
 
+`USE_CODEX` is the canonical config key. Ralph also accepts legacy `USECODEX` in env files and shell environments for compatibility.
+
 Ralph never loads from `.env.example` files.
 
 **Relative Path Resolution**

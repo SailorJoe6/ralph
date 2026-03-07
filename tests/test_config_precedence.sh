@@ -51,11 +51,11 @@ mkdir -p "$HOME_DIR/.ralph" "$PROJECT_DIR/.ralph"
   assert_eq "$USE_CODEX" "0" "defaults/use_codex"
 )
 
-# Case 2: user .env overrides defaults
+# Case 2: user .env overrides defaults and accepts USECODEX compatibility alias
 cat > "$HOME_DIR/.ralph/.env" <<'EOF'
 LOG_DIR=user/logs
 CONTAINER_RUNTIME=podman
-USE_CODEX=1
+USECODEX=1
 EOF
 (
   export HOME="$HOME_DIR"
@@ -74,6 +74,7 @@ EOF
 cat > "$PROJECT_DIR/.ralph/.env" <<'EOF'
 LOG_DIR=project/logs
 CONTAINER_RUNTIME=nerdctl
+USECODEX=0
 EOF
 (
   export HOME="$HOME_DIR"
@@ -84,18 +85,21 @@ EOF
   assert_eq "$ERROR_LOG" "$PROJECT_DIR/project/logs/ERROR_LOG.md" "project/error_log_default_from_resolved_log_dir"
   assert_eq "$OUTPUT_LOG" "$PROJECT_DIR/project/logs/OUTPUT_LOG.md" "project/output_log_default_from_resolved_log_dir"
   assert_eq "$CONTAINER_RUNTIME" "nerdctl" "project/container_runtime"
+  assert_eq "$USE_CODEX" "0" "project/use_codex_alias_override"
 )
 
-# Case 4: shell environment overrides project .env
+# Case 4: shell environment overrides project .env, including USECODEX compatibility alias
 (
   export HOME="$HOME_DIR"
   clear_config_env
   export LOG_DIR="shell/logs"
+  export USECODEX="1"
   ralph_load_config "$PROJECT_DIR"
 
   assert_eq "$LOG_DIR" "shell/logs" "shell/log_dir"
   assert_eq "$ERROR_LOG" "shell/logs/ERROR_LOG.md" "shell/error_log_default_from_log_dir"
   assert_eq "$OUTPUT_LOG" "shell/logs/OUTPUT_LOG.md" "shell/output_log_default_from_log_dir"
+  assert_eq "$USE_CODEX" "1" "shell/use_codex_alias_override"
 )
 
 # Case 5: project .env relative path variables resolve from project root

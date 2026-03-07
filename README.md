@@ -129,6 +129,8 @@ Key configuration variables:
 - **Container configuration** - Set container name, workdir, and runtime
 - **Behavior flags** - Use Codex, set callbacks
 
+`USE_CODEX` is the canonical env key. Legacy `USECODEX` is also accepted for compatibility.
+
 Relative paths in `<project_root>/.ralph/.env` are resolved relative to `<project_root>` for planning/log path variables.
 
 See `.env.example` for all available options with detailed comments.
@@ -143,6 +145,7 @@ Options:
   -f, --freestyle         Run execute loop with prepare prompt (skip spec/plan checks)
   -y, --yolo              Enable all permissions without unattended execution
   --codex                 Use Codex instead of Claude
+  --claude                Use Claude instead of Codex
   --container <name>      Execute commands inside specified container
   --workdir <path>        Container working directory (default: /<basename>)
   --callback <script>     Run script after each pass

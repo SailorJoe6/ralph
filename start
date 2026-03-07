@@ -39,6 +39,7 @@ print_runtime_usage_summary() {
 Standard runtime usage:
   ralph
   ralph --codex
+  ralph --claude
   ralph --unattended
 EOF
 }
@@ -149,6 +150,10 @@ while [[ $# -gt 0 ]]; do
       USE_CODEX=1
       shift
       ;;
+    --claude)
+      USE_CODEX=0
+      shift
+      ;;
     --container)
       if [[ $# -lt 2 ]]; then
         echo "Error: --container requires a container name"
@@ -199,6 +204,7 @@ while [[ $# -gt 0 ]]; do
       echo "  -f, --freestyle         Run execute loop with prepare prompt (skip spec/plan checks)"
       echo "  -y, --yolo              Enable full permissions (interactive unless -u)"
       echo "  --codex                 Use Codex instead of Claude"
+      echo "  --claude                Use Claude instead of Codex"
       echo "  --resume [guid]         Resume previous session (optional session ID for Claude or Codex)"
       echo "  --container <name>      Execute commands inside specified container"
       echo "  --workdir <path>        Container working directory (default: /<basename>)"

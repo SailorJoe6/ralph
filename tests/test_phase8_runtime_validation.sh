@@ -198,7 +198,7 @@ printf 'HANDOFF_SHOULD_NOT_RUN_TEXT\n' > "$PROJECT3B/.ralph/prompts/handoff.md"
 rm -f "$ARGS_LOG3B" "$COUNT_FILE3B"
 run_start "$PROJECT3B" "$HOME3B" "$FAKE_BIN3B" env ARGS_LOG="$ARGS_LOG3B" COUNT_FILE="$COUNT_FILE3B" "$START_BIN" --freestyle
 assert_eq "$RUN_STATUS" "1" "freestyle no-handoff two-pass exit status"
-assert_eq "$(wc -l < "$ARGS_LOG3B")" "2" "freestyle no-handoff produced two main-loop calls"
+assert_eq "$(wc -l < "$ARGS_LOG3B" | tr -d '[:space:]')" "2" "freestyle no-handoff produced two main-loop calls"
 FREESTYLE_NO_HANDOFF_FIRST="$(sed -n '1p' "$ARGS_LOG3B")"
 FREESTYLE_NO_HANDOFF_SECOND="$(sed -n '2p' "$ARGS_LOG3B")"
 assert_contains "$FREESTYLE_NO_HANDOFF_FIRST" "[PREPARE_NO_HANDOFF_TEXT]" "freestyle no-handoff first pass uses prepare prompt"
@@ -243,7 +243,7 @@ printf 'DESIGN_PROMPT_TEXT\n' > "$PROJECT4/.ralph/prompts/design.md"
 rm -f "$ARGS_LOG4" "$COUNT_FILE4"
 run_start "$PROJECT4" "$HOME4" "$FAKE_BIN4" env ARGS_LOG="$ARGS_LOG4" COUNT_FILE="$COUNT_FILE4" "$START_BIN" --resume
 assert_eq "$RUN_STATUS" "1" "--resume two-pass exit status"
-assert_eq "$(wc -l < "$ARGS_LOG4")" "2" "--resume produced two calls"
+assert_eq "$(wc -l < "$ARGS_LOG4" | tr -d '[:space:]')" "2" "--resume produced two calls"
 RESUME_FIRST="$(sed -n '1p' "$ARGS_LOG4")"
 RESUME_SECOND="$(sed -n '2p' "$ARGS_LOG4")"
 assert_contains "$RESUME_FIRST" "[--continue]" "--resume uses --continue on first pass"
@@ -254,7 +254,7 @@ assert_contains "$RESUME_SECOND" "[DESIGN_PROMPT_TEXT]" "--resume second pass us
 rm -f "$ARGS_LOG4" "$COUNT_FILE4"
 run_start "$PROJECT4" "$HOME4" "$FAKE_BIN4" env ARGS_LOG="$ARGS_LOG4" COUNT_FILE="$COUNT_FILE4" "$START_BIN" --resume session-123
 assert_eq "$RUN_STATUS" "1" "--resume <id> two-pass exit status"
-assert_eq "$(wc -l < "$ARGS_LOG4")" "2" "--resume <id> produced two calls"
+assert_eq "$(wc -l < "$ARGS_LOG4" | tr -d '[:space:]')" "2" "--resume <id> produced two calls"
 RESUME_ID_FIRST="$(sed -n '1p' "$ARGS_LOG4")"
 RESUME_ID_SECOND="$(sed -n '2p' "$ARGS_LOG4")"
 assert_contains "$RESUME_ID_FIRST" "[--resume][session-123]" "--resume <id> uses provided id on first pass"
@@ -301,7 +301,7 @@ printf 'plan\n' > "$PROJECT4B/.ralph/plans/EXECUTION_PLAN.md"
 rm -f "$ARGS_LOG4B" "$COUNT_FILE4B"
 run_start "$PROJECT4B" "$HOME4B" "$FAKE_BIN4B" env ARGS_LOG="$ARGS_LOG4B" COUNT_FILE="$COUNT_FILE4B" "$START_BIN" --resume --unattended
 assert_eq "$RUN_STATUS" "1" "--resume --unattended Claude two-pass exit status"
-assert_eq "$(wc -l < "$ARGS_LOG4B")" "2" "--resume --unattended Claude produced two calls"
+assert_eq "$(wc -l < "$ARGS_LOG4B" | tr -d '[:space:]')" "2" "--resume --unattended Claude produced two calls"
 RESUME_UNATTENDED_CLAUDE_FIRST="$(sed -n '1p' "$ARGS_LOG4B")"
 RESUME_UNATTENDED_CLAUDE_SECOND="$(sed -n '2p' "$ARGS_LOG4B")"
 assert_contains "$RESUME_UNATTENDED_CLAUDE_FIRST" "[--continue][-p][continue]" "Claude unattended resume first pass uses only continue prompt"
@@ -345,7 +345,7 @@ printf 'CODEX_DESIGN_PROMPT_TEXT\n' > "$PROJECT4C/.ralph/prompts/design.md"
 rm -f "$ARGS_LOG4C" "$COUNT_FILE4C"
 run_start "$PROJECT4C" "$HOME4C" "$FAKE_BIN4C" env ARGS_LOG="$ARGS_LOG4C" COUNT_FILE="$COUNT_FILE4C" "$START_BIN" --codex --resume
 assert_eq "$RUN_STATUS" "1" "--codex --resume interactive two-pass exit status"
-assert_eq "$(wc -l < "$ARGS_LOG4C")" "2" "--codex --resume interactive produced two calls"
+assert_eq "$(wc -l < "$ARGS_LOG4C" | tr -d '[:space:]')" "2" "--codex --resume interactive produced two calls"
 RESUME_CODEX_FIRST="$(sed -n '1p' "$ARGS_LOG4C")"
 RESUME_CODEX_SECOND="$(sed -n '2p' "$ARGS_LOG4C")"
 assert_contains "$RESUME_CODEX_FIRST" "[resume][--last]" "Codex interactive resume first pass uses resume --last"
@@ -392,7 +392,7 @@ printf 'plan\n' > "$PROJECT4D/.ralph/plans/EXECUTION_PLAN.md"
 rm -f "$ARGS_LOG4D" "$COUNT_FILE4D"
 run_start "$PROJECT4D" "$HOME4D" "$FAKE_BIN4D" env ARGS_LOG="$ARGS_LOG4D" COUNT_FILE="$COUNT_FILE4D" "$START_BIN" --codex --resume --unattended
 assert_eq "$RUN_STATUS" "1" "--codex --resume --unattended two-pass exit status"
-assert_eq "$(wc -l < "$ARGS_LOG4D")" "2" "--codex --resume --unattended produced two calls"
+assert_eq "$(wc -l < "$ARGS_LOG4D" | tr -d '[:space:]')" "2" "--codex --resume --unattended produced two calls"
 RESUME_UNATTENDED_CODEX_FIRST="$(sed -n '1p' "$ARGS_LOG4D")"
 RESUME_UNATTENDED_CODEX_SECOND="$(sed -n '2p' "$ARGS_LOG4D")"
 assert_contains "$RESUME_UNATTENDED_CODEX_FIRST" "[exec][resume][--last][continue]" "Codex unattended resume first pass uses only continue token"
@@ -400,7 +400,51 @@ assert_not_contains "$RESUME_UNATTENDED_CODEX_FIRST" "[CODEX_EXECUTE_PROMPT_TEXT
 assert_not_contains "$RESUME_UNATTENDED_CODEX_SECOND" "[resume]" "Codex unattended resume cleared after first pass"
 assert_contains "$RESUME_UNATTENDED_CODEX_SECOND" "[exec][CODEX_EXECUTE_PROMPT_TEXT]" "Codex unattended second pass uses phase prompt"
 
-# Case 5: container mode uses /<basename> default workdir and honors --workdir.
+# Case 5: tool selection honors USECODEX compatibility alias and explicit --claude override.
+HOME5="$TMP_ROOT/home-tool-selection"
+PROJECT5="$TMP_ROOT/project-tool-selection"
+FAKE_BIN5="$TMP_ROOT/fake-bin-tool-selection"
+TOOL_LOG5="$TMP_ROOT/tool-selection.log"
+mkdir -p "$HOME5/.ralph" "$PROJECT5/.ralph/prompts" "$PROJECT5/.ralph" "$FAKE_BIN5"
+cat > "$FAKE_BIN5/claude" <<'EOF_FAKE_CLAUDE_TOOL_SELECTION'
+#!/usr/bin/env bash
+set -euo pipefail
+: "${TOOL_LOG:?}"
+printf 'claude\n' >> "$TOOL_LOG"
+exit 7
+EOF_FAKE_CLAUDE_TOOL_SELECTION
+cat > "$FAKE_BIN5/codex" <<'EOF_FAKE_CODEX_TOOL_SELECTION'
+#!/usr/bin/env bash
+set -euo pipefail
+: "${TOOL_LOG:?}"
+printf 'codex\n' >> "$TOOL_LOG"
+exit 7
+EOF_FAKE_CODEX_TOOL_SELECTION
+chmod +x "$FAKE_BIN5/claude" "$FAKE_BIN5/codex"
+printf 'DESIGN_PROMPT_TEXT\n' > "$PROJECT5/.ralph/prompts/design.md"
+
+cat > "$HOME5/.ralph/.env" <<'EOF_HOME_TOOL_SELECTION'
+USECODEX=1
+EOF_HOME_TOOL_SELECTION
+cat > "$PROJECT5/.ralph/.env" <<'EOF_PROJECT_TOOL_SELECTION'
+USECODEX=0
+EOF_PROJECT_TOOL_SELECTION
+
+rm -f "$TOOL_LOG5"
+run_start "$PROJECT5" "$HOME5" "$FAKE_BIN5" env TOOL_LOG="$TOOL_LOG5" "$START_BIN"
+assert_eq "$RUN_STATUS" "1" "project USECODEX override exit status"
+assert_eq "$(cat "$TOOL_LOG5")" "claude" "project USECODEX override selects Claude"
+
+cat > "$PROJECT5/.ralph/.env" <<'EOF_PROJECT_TOOL_SELECTION_CANONICAL'
+USE_CODEX=1
+EOF_PROJECT_TOOL_SELECTION_CANONICAL
+
+rm -f "$TOOL_LOG5"
+run_start "$PROJECT5" "$HOME5" "$FAKE_BIN5" env TOOL_LOG="$TOOL_LOG5" "$START_BIN" --claude
+assert_eq "$RUN_STATUS" "1" "--claude override exit status"
+assert_eq "$(cat "$TOOL_LOG5")" "claude" "--claude forces Claude over config"
+
+# Case 6: container mode uses /<basename> default workdir and honors --workdir.
 HOME5="$TMP_ROOT/home-container"
 PROJECT5="$TMP_ROOT/project-container-default"
 FAKE_BIN5="$TMP_ROOT/fake-bin-container"

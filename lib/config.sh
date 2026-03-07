@@ -19,6 +19,21 @@ ralph_var_is_set() {
   [[ "${!var_name+x}" == "x" ]]
 }
 
+ralph_get_compat_config_value() {
+  local key="$1"
+
+  case "$key" in
+    USE_CODEX)
+      if ralph_var_is_set "USECODEX"; then
+        printf '%s\n' "${USECODEX}"
+        return 0
+      fi
+      ;;
+  esac
+
+  return 1
+}
+
 ralph_normalize_path() {
   local input="$1"
   local is_absolute=0
@@ -114,11 +129,15 @@ ralph_path_key_needs_project_resolution() {
 
 ralph_capture_shell_env_snapshot() {
   local key=""
+  local value=""
 
   for key in "${RALPH_CONFIG_KEYS[@]}"; do
     if ralph_var_is_set "$key"; then
       printf -v "RALPH_SHELL_HAS_${key}" '%s' "1"
       printf -v "RALPH_SHELL_VAL_${key}" '%s' "${!key}"
+    elif value="$(ralph_get_compat_config_value "$key")"; then
+      printf -v "RALPH_SHELL_HAS_${key}" '%s' "1"
+      printf -v "RALPH_SHELL_VAL_${key}" '%s' "$value"
     else
       printf -v "RALPH_SHELL_HAS_${key}" '%s' "0"
       printf -v "RALPH_SHELL_VAL_${key}" '%s' ""
@@ -160,6 +179,8 @@ ralph_apply_env_file() {
       for key in "${RALPH_CONFIG_KEYS[@]}"; do
         if [[ "${!key+x}" == "x" ]]; then
           printf '%s\t%s\n' "$key" "${!key}"
+        elif value="$(ralph_get_compat_config_value "$key")"; then
+          printf '%s\t%s\n' "$key" "$value"
         fi
       done
     )
