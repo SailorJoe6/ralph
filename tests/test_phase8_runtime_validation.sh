@@ -95,18 +95,67 @@ run_start() {
 TMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TMP_ROOT"' EXIT
 
-# Case 1: missing active prompt shows template-copy guidance.
+# Case 1: default no-docs flow uses prepare prompt.
+HOME1="$TMP_ROOT/home-default-prepare"
+PROJECT1="$TMP_ROOT/project-default-prepare"
+FAKE_BIN1="$TMP_ROOT/fake-bin-default-prepare"
+TOOL_LOG1="$TMP_ROOT/default-prepare.log"
+mkdir -p "$HOME1/.ralph" "$PROJECT1/.ralph/prompts" "$FAKE_BIN1"
+cat > "$FAKE_BIN1/claude" <<'EOF_FAKE_CLAUDE_DEFAULT_PREPARE'
+#!/usr/bin/env bash
+set -euo pipefail
+: "${TOOL_LOG:?}"
+printf 'claude:' >> "$TOOL_LOG"
+for arg in "$@"; do
+  printf '[%s]' "$arg" >> "$TOOL_LOG"
+done
+printf '\n' >> "$TOOL_LOG"
+exit 7
+EOF_FAKE_CLAUDE_DEFAULT_PREPARE
+cat > "$FAKE_BIN1/codex" <<'EOF_FAKE_CODEX_DEFAULT_PREPARE'
+#!/usr/bin/env bash
+set -euo pipefail
+: "${TOOL_LOG:?}"
+printf 'codex:' >> "$TOOL_LOG"
+for arg in "$@"; do
+  printf '[%s]' "$arg" >> "$TOOL_LOG"
+done
+printf '\n' >> "$TOOL_LOG"
+exit 7
+EOF_FAKE_CODEX_DEFAULT_PREPARE
+chmod +x "$FAKE_BIN1/claude" "$FAKE_BIN1/codex"
+printf 'PREPARE_PROMPT_TEXT\n' > "$PROJECT1/.ralph/prompts/prepare.md"
+
+rm -f "$TOOL_LOG1"
+run_start "$PROJECT1" "$HOME1" "$FAKE_BIN1" env TOOL_LOG="$TOOL_LOG1" "$START_BIN"
+assert_eq "$RUN_STATUS" "1" "default prepare Claude exit status"
+DEFAULT_PREPARE_CLAUDE="$(cat "$TOOL_LOG1")"
+assert_contains "$DEFAULT_PREPARE_CLAUDE" "claude:" "default flow uses Claude by default"
+assert_contains "$DEFAULT_PREPARE_CLAUDE" "[PREPARE_PROMPT_TEXT]" "default flow uses prepare prompt for Claude"
+
+cat > "$HOME1/.ralph/.env" <<'EOF_HOME_DEFAULT_PREPARE'
+USECODEX=1
+EOF_HOME_DEFAULT_PREPARE
+
+rm -f "$TOOL_LOG1"
+run_start "$PROJECT1" "$HOME1" "$FAKE_BIN1" env TOOL_LOG="$TOOL_LOG1" "$START_BIN"
+assert_eq "$RUN_STATUS" "1" "default prepare Codex exit status"
+DEFAULT_PREPARE_CODEX="$(cat "$TOOL_LOG1")"
+assert_contains "$DEFAULT_PREPARE_CODEX" "codex:" "default flow uses Codex when configured"
+assert_contains "$DEFAULT_PREPARE_CODEX" "[PREPARE_PROMPT_TEXT]" "default flow uses prepare prompt for Codex"
+
+# Case 2: missing active prompt shows template-copy guidance.
 HOME1="$TMP_ROOT/home-missing-prompt"
 PROJECT1="$TMP_ROOT/project-missing-prompt"
 mkdir -p "$HOME1" "$PROJECT1/.ralph/prompts"
 
 run_start "$PROJECT1" "$HOME1" "" "$START_BIN"
 assert_eq "$RUN_STATUS" "1" "missing prompt exit status"
-assert_contains "$RUN_STDOUT$RUN_STDERR" "Prompt file not found: $PROJECT1/.ralph/prompts/design.md" "missing prompt path"
-assert_contains "$RUN_STDOUT$RUN_STDERR" "/prompts/design.example.md" "missing prompt design template guidance"
-assert_contains "$RUN_STDOUT$RUN_STDERR" "$PROJECT1/.ralph/prompts/design.md" "missing prompt destination guidance"
+assert_contains "$RUN_STDOUT$RUN_STDERR" "Prompt file not found: $PROJECT1/.ralph/prompts/prepare.md" "missing prompt path"
+assert_contains "$RUN_STDOUT$RUN_STDERR" "/prompts/prepare.example.md" "missing prompt prepare template guidance"
+assert_contains "$RUN_STDOUT$RUN_STDERR" "$PROJECT1/.ralph/prompts/prepare.md" "missing prompt destination guidance"
 
-# Case 2: unattended execute mode writes logs to .ralph/logs.
+# Case 3: unattended execute mode writes logs to .ralph/logs.
 HOME2="$TMP_ROOT/home-unattended"
 PROJECT2="$TMP_ROOT/project-unattended"
 FAKE_BIN2="$TMP_ROOT/fake-bin-unattended"
@@ -132,7 +181,7 @@ assert_contains "$(cat "$PROJECT2/.ralph/logs/OUTPUT_LOG.md")" "Pass 1:" "unatte
 assert_contains "$(cat "$PROJECT2/.ralph/logs/OUTPUT_LOG.md")" "fake-claude-stdout" "unattended output capture"
 assert_contains "$(cat "$PROJECT2/.ralph/logs/ERROR_LOG.md")" "fake-claude-stderr" "unattended error capture"
 
-# Case 3: --freestyle --unattended normalizes to interactive yolo mode.
+# Case 4: --freestyle --unattended normalizes to interactive yolo mode.
 HOME3="$TMP_ROOT/home-freestyle"
 PROJECT3="$TMP_ROOT/project-freestyle"
 FAKE_BIN3="$TMP_ROOT/fake-bin-freestyle"
@@ -161,7 +210,7 @@ assert_contains "$FREESTYLE_ARGS" "[--dangerously-skip-permissions]" "freestyle 
 assert_not_contains "$FREESTYLE_ARGS" "[-p]" "freestyle stays interactive (no -p)"
 assert_contains "$FREESTYLE_ARGS" "[PREPARE_PROMPT_TEXT]" "freestyle uses prepare prompt"
 
-# Case 3b: freestyle mode does not run automatic handoff between passes.
+# Case 4b: freestyle mode does not run automatic handoff between passes.
 HOME3B="$TMP_ROOT/home-freestyle-no-handoff"
 PROJECT3B="$TMP_ROOT/project-freestyle-no-handoff"
 FAKE_BIN3B="$TMP_ROOT/fake-bin-freestyle-no-handoff"
@@ -207,7 +256,7 @@ assert_not_contains "$FREESTYLE_NO_HANDOFF_FIRST" "[HANDOFF_SHOULD_NOT_RUN_TEXT]
 assert_not_contains "$FREESTYLE_NO_HANDOFF_SECOND" "[HANDOFF_SHOULD_NOT_RUN_TEXT]" "freestyle no-handoff second pass does not use handoff prompt"
 assert_not_contains "$FREESTYLE_NO_HANDOFF_SECOND" "[--continue]" "freestyle no-handoff second pass is not handoff resume call"
 
-# Case 4: resume flags apply only on first pass for --resume and --resume <id>.
+# Case 5: resume flags apply only on first pass for --resume and --resume <id>.
 HOME4="$TMP_ROOT/home-resume"
 PROJECT4="$TMP_ROOT/project-resume"
 FAKE_BIN4="$TMP_ROOT/fake-bin-resume"
@@ -238,7 +287,7 @@ echo "resume test stop" >&2
 exit 7
 EOF_FAKE_CLAUDE_RESUME
 chmod +x "$FAKE_BIN4/claude"
-printf 'DESIGN_PROMPT_TEXT\n' > "$PROJECT4/.ralph/prompts/design.md"
+printf 'PREPARE_RESUME_PROMPT_TEXT\n' > "$PROJECT4/.ralph/prompts/prepare.md"
 
 rm -f "$ARGS_LOG4" "$COUNT_FILE4"
 run_start "$PROJECT4" "$HOME4" "$FAKE_BIN4" env ARGS_LOG="$ARGS_LOG4" COUNT_FILE="$COUNT_FILE4" "$START_BIN" --resume
@@ -247,9 +296,9 @@ assert_eq "$(wc -l < "$ARGS_LOG4" | tr -d '[:space:]')" "2" "--resume produced t
 RESUME_FIRST="$(sed -n '1p' "$ARGS_LOG4")"
 RESUME_SECOND="$(sed -n '2p' "$ARGS_LOG4")"
 assert_contains "$RESUME_FIRST" "[--continue]" "--resume uses --continue on first pass"
-assert_not_contains "$RESUME_FIRST" "[DESIGN_PROMPT_TEXT]" "--resume first pass does not send phase prompt in interactive mode"
+assert_not_contains "$RESUME_FIRST" "[PREPARE_RESUME_PROMPT_TEXT]" "--resume first pass does not send phase prompt in interactive mode"
 assert_not_contains "$RESUME_SECOND" "[--continue]" "--resume cleared after first pass"
-assert_contains "$RESUME_SECOND" "[DESIGN_PROMPT_TEXT]" "--resume second pass uses phase prompt after resume clears"
+assert_contains "$RESUME_SECOND" "[PREPARE_RESUME_PROMPT_TEXT]" "--resume second pass uses phase prompt after resume clears"
 
 rm -f "$ARGS_LOG4" "$COUNT_FILE4"
 run_start "$PROJECT4" "$HOME4" "$FAKE_BIN4" env ARGS_LOG="$ARGS_LOG4" COUNT_FILE="$COUNT_FILE4" "$START_BIN" --resume session-123
@@ -258,10 +307,10 @@ assert_eq "$(wc -l < "$ARGS_LOG4" | tr -d '[:space:]')" "2" "--resume <id> produ
 RESUME_ID_FIRST="$(sed -n '1p' "$ARGS_LOG4")"
 RESUME_ID_SECOND="$(sed -n '2p' "$ARGS_LOG4")"
 assert_contains "$RESUME_ID_FIRST" "[--resume][session-123]" "--resume <id> uses provided id on first pass"
-assert_not_contains "$RESUME_ID_FIRST" "[DESIGN_PROMPT_TEXT]" "--resume <id> first pass does not send phase prompt in interactive mode"
+assert_not_contains "$RESUME_ID_FIRST" "[PREPARE_RESUME_PROMPT_TEXT]" "--resume <id> first pass does not send phase prompt in interactive mode"
 assert_not_contains "$RESUME_ID_SECOND" "[--resume]" "--resume <id> cleared after first pass"
 assert_not_contains "$RESUME_ID_SECOND" "[session-123]" "--resume <id> value not reused after first pass"
-assert_contains "$RESUME_ID_SECOND" "[DESIGN_PROMPT_TEXT]" "--resume <id> second pass uses phase prompt after resume clears"
+assert_contains "$RESUME_ID_SECOND" "[PREPARE_RESUME_PROMPT_TEXT]" "--resume <id> second pass uses phase prompt after resume clears"
 
 # Case 4b: unattended Claude resume sends only "continue" on first pass.
 HOME4B="$TMP_ROOT/home-resume-unattended-claude"
@@ -340,7 +389,7 @@ echo "resume codex stop" >&2
 exit 7
 EOF_FAKE_CODEX_RESUME
 chmod +x "$FAKE_BIN4C/codex"
-printf 'CODEX_DESIGN_PROMPT_TEXT\n' > "$PROJECT4C/.ralph/prompts/design.md"
+printf 'CODEX_PREPARE_PROMPT_TEXT\n' > "$PROJECT4C/.ralph/prompts/prepare.md"
 
 rm -f "$ARGS_LOG4C" "$COUNT_FILE4C"
 run_start "$PROJECT4C" "$HOME4C" "$FAKE_BIN4C" env ARGS_LOG="$ARGS_LOG4C" COUNT_FILE="$COUNT_FILE4C" "$START_BIN" --codex --resume
@@ -349,10 +398,10 @@ assert_eq "$(wc -l < "$ARGS_LOG4C" | tr -d '[:space:]')" "2" "--codex --resume i
 RESUME_CODEX_FIRST="$(sed -n '1p' "$ARGS_LOG4C")"
 RESUME_CODEX_SECOND="$(sed -n '2p' "$ARGS_LOG4C")"
 assert_contains "$RESUME_CODEX_FIRST" "[resume][--last]" "Codex interactive resume first pass uses resume --last"
-assert_not_contains "$RESUME_CODEX_FIRST" "[CODEX_DESIGN_PROMPT_TEXT]" "Codex interactive resume first pass does not send phase prompt"
+assert_not_contains "$RESUME_CODEX_FIRST" "[CODEX_PREPARE_PROMPT_TEXT]" "Codex interactive resume first pass does not send phase prompt"
 assert_not_contains "$RESUME_CODEX_FIRST" "[continue]" "Codex interactive resume does not send continue token"
 assert_not_contains "$RESUME_CODEX_SECOND" "[resume]" "Codex interactive resume cleared after first pass"
-assert_contains "$RESUME_CODEX_SECOND" "[CODEX_DESIGN_PROMPT_TEXT]" "Codex interactive second pass uses phase prompt"
+assert_contains "$RESUME_CODEX_SECOND" "[CODEX_PREPARE_PROMPT_TEXT]" "Codex interactive second pass uses phase prompt"
 
 # Case 4d: unattended Codex resume sends only "continue" on first pass.
 HOME4D="$TMP_ROOT/home-resume-unattended-codex"
@@ -400,7 +449,7 @@ assert_not_contains "$RESUME_UNATTENDED_CODEX_FIRST" "[CODEX_EXECUTE_PROMPT_TEXT
 assert_not_contains "$RESUME_UNATTENDED_CODEX_SECOND" "[resume]" "Codex unattended resume cleared after first pass"
 assert_contains "$RESUME_UNATTENDED_CODEX_SECOND" "[exec][CODEX_EXECUTE_PROMPT_TEXT]" "Codex unattended second pass uses phase prompt"
 
-# Case 5: tool selection honors USECODEX compatibility alias and explicit --claude override.
+# Case 6: tool selection honors USECODEX compatibility alias and explicit --claude override.
 HOME5="$TMP_ROOT/home-tool-selection"
 PROJECT5="$TMP_ROOT/project-tool-selection"
 FAKE_BIN5="$TMP_ROOT/fake-bin-tool-selection"
@@ -421,7 +470,7 @@ printf 'codex\n' >> "$TOOL_LOG"
 exit 7
 EOF_FAKE_CODEX_TOOL_SELECTION
 chmod +x "$FAKE_BIN5/claude" "$FAKE_BIN5/codex"
-printf 'DESIGN_PROMPT_TEXT\n' > "$PROJECT5/.ralph/prompts/design.md"
+printf 'PREPARE_TOOL_SELECTION_TEXT\n' > "$PROJECT5/.ralph/prompts/prepare.md"
 
 cat > "$HOME5/.ralph/.env" <<'EOF_HOME_TOOL_SELECTION'
 USECODEX=1
@@ -444,7 +493,7 @@ run_start "$PROJECT5" "$HOME5" "$FAKE_BIN5" env TOOL_LOG="$TOOL_LOG5" "$START_BI
 assert_eq "$RUN_STATUS" "1" "--claude override exit status"
 assert_eq "$(cat "$TOOL_LOG5")" "claude" "--claude forces Claude over config"
 
-# Case 6: container mode uses /<basename> default workdir and honors --workdir.
+# Case 7: container mode uses /<basename> default workdir and honors --workdir.
 HOME5="$TMP_ROOT/home-container"
 PROJECT5="$TMP_ROOT/project-container-default"
 FAKE_BIN5="$TMP_ROOT/fake-bin-container"

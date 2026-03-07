@@ -10,13 +10,14 @@ Ralph implements Geoff Huntly's Ralph Wiggum loop, a design → plan → execute
 
 Ralph orchestrates a structured workflow for AI-assisted development:
 
-1. **Design Phase** - Discuss requirements with AI, then it generates a detailed specification
-2. **Plan Phase** - AI creates detailed execution plan based on specification, you review it and work with the AI to get it perfect. 
-3. **Execute Phase** - AI implements the plan one step at a time, with a clean context window for each step. Optional unattended mode for extreme productivity.
-4. **Handoff Phase** - After each step, the AI updates planning docs with context for next session before clearing it's context window (runs automatically after each execute pass)
+1. **Free-Form Interactive Mode** - Start with open-ended conversation via `prepare.md` when no planning docs exist.
+2. **Design Phase** - Use the design prompt on demand when you want to generate or revise `SPECIFICATION.md`.
+3. **Plan Phase** - AI creates detailed execution plan based on specification, and you can refine it before execution.
+4. **Execute Phase** - AI implements the plan one step at a time, with optional unattended mode for long-running execution.
+5. **Handoff Phase** - After each execute pass, the AI updates planning docs with context for the next session.
 
 Ralph automatically progresses through phases based on which planning documents exist:
-- No planning docs → runs design phase
+- No planning docs → runs free-form interactive mode (`prepare.md`)
 - `SPECIFICATION.md` exists → runs plan phase
 - Both specification and execution plan exist → runs execute phase (with automatic handoff after each pass)
 
@@ -368,7 +369,7 @@ rm -f .ralph/plans/SPECIFICATION.md .ralph/plans/EXECUTION_PLAN.md
 
 If you changed planning paths in `.ralph/.env`, remove those configured files instead.
 
-Next `ralph` will begin at the design phase.
+Next `ralph` will begin in free-form interactive mode.
 
 ## Troubleshooting
 
@@ -412,7 +413,7 @@ which codex
 ### Basic interactive workflow
 
 ```bash
-# Start design phase
+# Start free-form interactive mode
 ralph
 
 # After specification is created, run plan phase

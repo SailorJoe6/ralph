@@ -428,7 +428,7 @@ run_claude() {
 # Main loop - iterate through workflow phases
 while :; do
   PASS=$((PASS + 1))
-  PROMPT="$DESIGN_PROMPT"
+  PROMPT="$PREPARE_PROMPT"
   EXECUTE_MODE=0
   BLOCKED_MODE=0
 

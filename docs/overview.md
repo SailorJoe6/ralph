@@ -5,7 +5,8 @@ Ralph is SailorJoe's implementation of Geoffry Huntly's "Ralph Wiggum Loop": a r
 Runtime mode requires a V2 project root for the standard design -> plan -> execute flow: the current working directory must contain a local `.ralph/` folder. Run `ralph init` in the root folder of any project to set up Ralph to help you with that project. Freestyle is the exception and skips project-root enforcement.
 
 **Phases**
-- Design: if no planning docs exist, Ralph runs the design prompt and expects the agent to produce `SPECIFICATION.md`.
+- Free-form interactive: if no planning docs exist, Ralph runs the prepare prompt so you can explore or shape work before formal design.
+- Design: use the design prompt when you want the agent to produce or revise `SPECIFICATION.md`.
 - Plan: if `SPECIFICATION.md` exists but `EXECUTION_PLAN.md` does not, Ralph runs the plan prompt and expects the agent to produce `EXECUTION_PLAN.md`.
 - Execute: if both planning docs exist, Ralph runs the execute prompt and then handoff.
 - Handoff: after each execute pass, Ralph runs the handoff prompt to capture context for the next session.
@@ -13,7 +14,7 @@ Runtime mode requires a V2 project root for the standard design -> plan -> execu
 **Planning Docs And Phase Selection**
 - Both `SPECIFICATION.md` and `EXECUTION_PLAN.md` present: execute phase.
 - Only `SPECIFICATION.md` present: plan phase.
-- Neither present: design phase.
+- Neither present: free-form interactive mode (`prepare.md`).
 - `EXECUTION_PLAN.md` without `SPECIFICATION.md`: error and exit.
 
 **Freestyle Mode**
