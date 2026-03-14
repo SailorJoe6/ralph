@@ -16,3 +16,7 @@ prompts/blocked.md
 logs/*
 !logs/.keep
 .ralph/logs/
+
+# Dolt data is local-only for beads
+.dolt/
+*.db
