@@ -432,12 +432,6 @@ while :; do
   EXECUTE_MODE=0
   BLOCKED_MODE=0
 
-  # Notify user when entering unattended mode
-  if [[ $UNATTENDED -eq 1 ]]; then
-    echo "--------"
-    echo "Entering unattended execution loop.  See logs for details"
-  fi
-
   # Check for freestyle mode first since it overrides normal phase checks
   if [[ $FREESTYLE -eq 1 ]]; then
     PROMPT="$PREPARE_PROMPT"
@@ -466,6 +460,11 @@ while :; do
     NONINTERACTIVE=1
   else
     NONINTERACTIVE=0
+  fi
+
+  if [[ $NONINTERACTIVE -eq 1 ]]; then
+    echo "--------"
+    echo "Entering unattended execution loop.  See logs for details"
   fi
 
   # Validate prompt file exists and provide helpful error message

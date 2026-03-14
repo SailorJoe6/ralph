@@ -181,6 +181,36 @@ assert_contains "$(cat "$PROJECT2/.ralph/logs/OUTPUT_LOG.md")" "Pass 1:" "unatte
 assert_contains "$(cat "$PROJECT2/.ralph/logs/OUTPUT_LOG.md")" "fake-claude-stdout" "unattended output capture"
 assert_contains "$(cat "$PROJECT2/.ralph/logs/ERROR_LOG.md")" "fake-claude-stderr" "unattended error capture"
 
+# Case 3b: --unattended outside execute phase stays interactive and suppresses the unattended banner.
+HOME2B="$TMP_ROOT/home-unattended-plan"
+PROJECT2B="$TMP_ROOT/project-unattended-plan"
+FAKE_BIN2B="$TMP_ROOT/fake-bin-unattended-plan"
+ARGS_LOG2B="$TMP_ROOT/unattended-plan-args.log"
+mkdir -p "$HOME2B" "$PROJECT2B/.ralph/prompts" "$PROJECT2B/.ralph/plans" "$FAKE_BIN2B"
+cat > "$FAKE_BIN2B/claude" <<'EOF_FAKE_CLAUDE_UNATTENDED_PLAN'
+#!/usr/bin/env bash
+set -euo pipefail
+: "${ARGS_LOG:?}"
+{
+  for arg in "$@"; do
+    printf '[%s]' "$arg"
+  done
+  printf '\n'
+} >> "$ARGS_LOG"
+exit 7
+EOF_FAKE_CLAUDE_UNATTENDED_PLAN
+chmod +x "$FAKE_BIN2B/claude"
+printf 'plan prompt\n' > "$PROJECT2B/.ralph/prompts/plan.md"
+printf 'spec\n' > "$PROJECT2B/.ralph/plans/SPECIFICATION.md"
+
+run_start "$PROJECT2B" "$HOME2B" "$FAKE_BIN2B" env ARGS_LOG="$ARGS_LOG2B" "$START_BIN" --unattended
+assert_eq "$RUN_STATUS" "1" "unattended plan failure exit status"
+assert_not_contains "$RUN_STDOUT$RUN_STDERR" "Entering unattended execution loop" "unattended banner is execute-only"
+UNATTENDED_PLAN_ARGS="$(cat "$ARGS_LOG2B")"
+assert_contains "$UNATTENDED_PLAN_ARGS" "[--dangerously-skip-permissions]" "unattended plan still enables yolo permission flag"
+assert_not_contains "$UNATTENDED_PLAN_ARGS" "[-p]" "unattended plan stays interactive"
+assert_contains "$UNATTENDED_PLAN_ARGS" "[plan prompt]" "unattended plan uses plan prompt"
+
 # Case 4: --freestyle --unattended normalizes to interactive yolo mode.
 HOME3="$TMP_ROOT/home-freestyle"
 PROJECT3="$TMP_ROOT/project-freestyle"
