@@ -18,7 +18,7 @@ In short: exiting the AI agent (whether via Ctrl+C, `/exit`, or any other means)
 ### Non-Interactive (Unattended) Mode
 
 - Ralph wraps the agent with a SIGINT trap that kills the process immediately.
-- If the log output includes the phrase "task interrupted", Ralph exits cleanly.
+- If the error log output includes "task interrupted" or other interrupt markers (case-insensitive "interrupted", "sigint", "signal 2"), Ralph exits cleanly.
 - Exit code 130 (SIGINT) from the agent causes Ralph to exit its loop.
 
 ---

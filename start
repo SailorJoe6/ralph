@@ -54,6 +54,18 @@ Initialize a different path with:
 EOF
 }
 
+freestyle_fallback_prompt() {
+  if [[ -f "$SCRIPT_DIR/prompts/prepare.example.beads.md" ]]; then
+    printf '%s\n' "$SCRIPT_DIR/prompts/prepare.example.beads.md"
+    return 0
+  fi
+  if [[ -f "$SCRIPT_DIR/prompts/prepare.example.md" ]]; then
+    printf '%s\n' "$SCRIPT_DIR/prompts/prepare.example.md"
+    return 0
+  fi
+  return 1
+}
+
 find_runtime_ancestor_root_for_diagnostics() {
   local current="$PROJECT_ROOT"
   local parent=""
@@ -340,6 +352,28 @@ run_noninteractive_cmd() {
   return $status
 }
 
+interrupt_detected_in_error_log() {
+  local file="$1"
+  local offset="$2"
+  if [[ -f "$file" ]]; then
+    if tail -c "+$((offset + 1))" "$file" | grep -qiE 'task interrupted|interrupted|sigint|signal 2'; then
+      return 0
+    fi
+  fi
+  return 1
+}
+
+interrupt_detected_in_output_log() {
+  local file="$1"
+  local offset="$2"
+  if [[ -f "$file" ]]; then
+    if tail -c "+$((offset + 1))" "$file" | grep -qi "task interrupted"; then
+      return 0
+    fi
+  fi
+  return 1
+}
+
 run_codex() {
   local noninteractive="$1"
   local prompt_text="$2"
@@ -467,6 +501,14 @@ while :; do
     echo "Entering unattended execution loop.  See logs for details"
   fi
 
+  if [[ $FREESTYLE -eq 1 && "$PROMPT" == "$PREPARE_PROMPT" && ! -f "$PROMPT" ]]; then
+    fallback_prompt="$(freestyle_fallback_prompt || true)"
+    if [[ -n "$fallback_prompt" ]]; then
+      PROMPT="$fallback_prompt"
+      echo "Warning: $PREPARE_PROMPT not found; using bundled freestyle prompt: $PROMPT" >&2
+    fi
+  fi
+
   # Validate prompt file exists and provide helpful error message
   if [[ ! -f "$PROMPT" ]]; then
     echo "Error: Prompt file not found: $PROMPT"
@@ -536,12 +578,12 @@ while :; do
   status=$?
   RESUME_PENDING=0
   if [[ $NONINTERACTIVE -eq 1 && -f "$ERROR_LOG" ]]; then
-    if tail -c "+$((error_offset + 1))" "$ERROR_LOG" | grep -qi "task interrupted"; then
+    if interrupt_detected_in_error_log "$ERROR_LOG" "$error_offset"; then
       exit 0
     fi
   fi
   if [[ $NONINTERACTIVE -eq 1 && -f "$OUTPUT_LOG" ]]; then
-    if tail -c "+$((output_offset + 1))" "$OUTPUT_LOG" | grep -qi "task interrupted"; then
+    if interrupt_detected_in_output_log "$OUTPUT_LOG" "$output_offset"; then
       exit 0
     fi
   fi

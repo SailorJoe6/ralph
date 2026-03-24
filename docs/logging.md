@@ -13,7 +13,7 @@ Ralph records error output consistently and logs full output in unattended mode.
 **Unattended Behavior**
 - In unattended mode, Ralph writes a pass header to `OUTPUT_LOG` and appends agent output.
 - `ERROR_LOG` is overwritten per pass.  It's worth noting that codex outputs all of it's reasoning on stderr whenever it's in a non-interactive mode.  Claude has no similar capability.  
-- If the new log output contains "task interrupted", Ralph exits cleanly.  This is a workaround to Codex swallowing CTRL+C sequences when in non-interactive mode, but reliably sending "task interrupted" to stderr in these circumstances. 
+- If the new error log output contains interrupt markers (case-insensitive "task interrupted", "interrupted", "sigint", "signal 2"), Ralph exits cleanly. This is a workaround for CLI signal handling quirks in non-interactive mode.
 
 ---
 
