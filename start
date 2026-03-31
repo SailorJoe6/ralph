@@ -25,6 +25,7 @@ FREESTYLE=0
 YOLO=0
 RESUME_MODE=0
 RESUME_SESSION=""
+TEAMMATE_MODE=""
 
 # CONTAINER_WORKDIR defaults to /<basename> if using container
 # This will be set dynamically if --container is used without --workdir
@@ -166,6 +167,14 @@ while [[ $# -gt 0 ]]; do
       USE_CODEX=0
       shift
       ;;
+    --teammate-mode)
+      if [[ $# -lt 2 ]]; then
+        echo "Error: --teammate-mode requires a mode"
+        exit 2
+      fi
+      TEAMMATE_MODE="$2"
+      shift 2
+      ;;
     --container)
       if [[ $# -lt 2 ]]; then
         echo "Error: --container requires a container name"
@@ -217,6 +226,7 @@ while [[ $# -gt 0 ]]; do
       echo "  -y, --yolo              Enable full permissions (interactive unless -u)"
       echo "  --codex                 Use Codex instead of Claude"
       echo "  --claude                Use Claude instead of Codex"
+      echo "  --teammate-mode <mode>  Pass through Claude teammate mode: auto, in-process, or tmux"
       echo "  --resume [guid]         Resume previous session (optional session ID for Claude or Codex)"
       echo "  --container <name>      Execute commands inside specified container"
       echo "  --workdir <path>        Container working directory (default: /<basename>)"
@@ -241,6 +251,17 @@ fi
 
 if [[ -n "$LOG_DIR" ]]; then
   mkdir -p "$LOG_DIR"
+fi
+
+if [[ -n "$TEAMMATE_MODE" ]]; then
+  case "$TEAMMATE_MODE" in
+    auto|in-process|tmux)
+      ;;
+    *)
+      echo "Error: --teammate-mode must be one of: auto, in-process, tmux" >&2
+      exit 2
+      ;;
+  esac
 fi
 
 # Freestyle + unattended: downgrade to yolo (elevated permissions, still interactive)
@@ -425,6 +446,9 @@ run_claude() {
   local prompt_text="$2"
 
   local claude_cmd=(claude "${PERM_CLAUDE_FLAGS[@]}")
+  if [[ -n "$TEAMMATE_MODE" ]]; then
+    claude_cmd+=(--teammate-mode "$TEAMMATE_MODE")
+  fi
 
   if [[ $RESUME_PENDING -eq 1 ]]; then
     if [[ -n "$RESUME_SESSION" ]]; then
@@ -640,11 +664,15 @@ while :; do
               fi
             else
               handoff_claude_flags=("${PERM_CLAUDE_FLAGS[@]}")
+              handoff_claude_teammate_flags=()
+              if [[ -n "$TEAMMATE_MODE" ]]; then
+                handoff_claude_teammate_flags=(--teammate-mode "$TEAMMATE_MODE")
+              fi
               if [[ -n "$CONTAINER_NAME" ]]; then
                 set_container_exec_flags "$handoff_require_tty"
-                container_exec claude "${handoff_claude_flags[@]}" --continue "$handoff_text" || echo "Warning: Handoff failed (non-fatal)"
+                container_exec claude "${handoff_claude_flags[@]}" "${handoff_claude_teammate_flags[@]}" --continue "$handoff_text" || echo "Warning: Handoff failed (non-fatal)"
               else
-                claude "${handoff_claude_flags[@]}" --continue "$handoff_text" || echo "Warning: Handoff failed (non-fatal)"
+                claude "${handoff_claude_flags[@]}" "${handoff_claude_teammate_flags[@]}" --continue "$handoff_text" || echo "Warning: Handoff failed (non-fatal)"
               fi
             fi
           } >> "$OUTPUT_LOG" 2> "$ERROR_LOG"
@@ -690,11 +718,15 @@ while :; do
             fi
           else
             handoff_claude_flags=("${PERM_CLAUDE_FLAGS[@]}")
+            handoff_claude_teammate_flags=()
+            if [[ -n "$TEAMMATE_MODE" ]]; then
+              handoff_claude_teammate_flags=(--teammate-mode "$TEAMMATE_MODE")
+            fi
             if [[ -n "$CONTAINER_NAME" ]]; then
               set_container_exec_flags "$handoff_require_tty"
-              container_exec claude "${handoff_claude_flags[@]}" --continue "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+              container_exec claude "${handoff_claude_flags[@]}" "${handoff_claude_teammate_flags[@]}" --continue "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
             else
-              claude "${handoff_claude_flags[@]}" --continue "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
+              claude "${handoff_claude_flags[@]}" "${handoff_claude_teammate_flags[@]}" --continue "$handoff_text" 2>&1 || echo "Warning: Handoff failed (non-fatal)"
             fi
           fi
         fi

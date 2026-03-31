@@ -27,6 +27,7 @@ Runtime options:
   -y, --yolo              Enable full permissions (interactive unless -u)
   --codex                 Use Codex instead of Claude
   --claude                Use Claude instead of Codex
+  --teammate-mode <mode>  Pass through Claude teammate mode: auto, in-process, or tmux
   --resume [guid]         Resume previous session (optional session ID for Claude or Codex)
   --container <name>      Execute commands inside specified container
   --workdir <path>        Container working directory (default: /<basename>)

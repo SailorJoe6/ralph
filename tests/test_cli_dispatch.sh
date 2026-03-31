@@ -46,12 +46,14 @@ run_cmd "$RALPH_BIN" --help
 assert_contains "$RUN_STDOUT" "Usage: ralph [OPTIONS]" "runtime help usage"
 assert_contains "$RUN_STDOUT" "Subcommands:" "runtime help subcommands"
 assert_contains "$RUN_STDOUT" "--claude" "runtime help claude flag"
+assert_contains "$RUN_STDOUT" "--teammate-mode <mode>" "runtime help teammate mode flag"
 
 run_cmd "$RALPH_BIN" start --help
 [[ "$RUN_STATUS" == "0" ]] || { echo "Expected ralph start --help exit 0" >&2; exit 1; }
 assert_contains "$RUN_STDOUT" "Reminder: 'ralph' is the default runtime command" "start alias reminder"
 assert_contains "$RUN_STDOUT" "Usage: ralph [OPTIONS]" "start alias runtime help"
 assert_contains "$RUN_STDOUT" "--claude" "start alias claude flag"
+assert_contains "$RUN_STDOUT" "--teammate-mode <mode>" "start alias teammate mode flag"
 
 run_cmd "$RALPH_BIN" init --help
 [[ "$RUN_STATUS" == "0" ]] || { echo "Expected ralph init --help exit 0" >&2; exit 1; }

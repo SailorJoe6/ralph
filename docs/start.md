@@ -13,6 +13,7 @@ ralph start [OPTIONS]
 **Options**
 - `--codex` Use Codex instead of Claude.
 - `--claude` Use Claude instead of Codex.
+- `--teammate-mode <mode>` Pass through Claude Code teammate mode (`auto`, `in-process`, or `tmux`). Ignored when running Codex.
 - `-y, --yolo` Enable full permissions while staying interactive.
 - `-u, --unattended` Run non-interactive execution with full permissions during execute and handoff.
 - `-f, --freestyle` Run execute loop with the prepare prompt, skipping spec/plan checks.
@@ -24,6 +25,7 @@ ralph start [OPTIONS]
 
 **Validation Rules**
 - When both `--codex` and `--claude` are passed, the last flag wins.
+- `--teammate-mode` must be one of `auto`, `in-process`, or `tmux`.
 - Passing both `--freestyle` and `--unattended` is normalized to interactive freestyle with yolo permissions.
 - `--callback` must be executable and resolvable by `command -v`.
 - `--container` requires the configured container runtime to exist.

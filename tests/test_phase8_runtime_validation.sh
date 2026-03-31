@@ -523,6 +523,65 @@ run_start "$PROJECT5" "$HOME5" "$FAKE_BIN5" env TOOL_LOG="$TOOL_LOG5" "$START_BI
 assert_eq "$RUN_STATUS" "1" "--claude override exit status"
 assert_eq "$(cat "$TOOL_LOG5")" "claude" "--claude forces Claude over config"
 
+# Case 6b: Claude teammate mode is validated and passed through interactive, unattended, and handoff calls.
+HOME5A="$TMP_ROOT/home-teammate-mode"
+PROJECT5A="$TMP_ROOT/project-teammate-mode"
+FAKE_BIN5A="$TMP_ROOT/fake-bin-teammate-mode"
+ARGS_LOG5A="$TMP_ROOT/teammate-mode-args.log"
+COUNT_FILE5A="$TMP_ROOT/teammate-mode-count.txt"
+mkdir -p "$HOME5A" "$PROJECT5A/.ralph/prompts" "$PROJECT5A/.ralph/plans" "$FAKE_BIN5A"
+cat > "$FAKE_BIN5A/claude" <<'EOF_FAKE_CLAUDE_TEAMMATE_MODE'
+#!/usr/bin/env bash
+set -euo pipefail
+: "${ARGS_LOG:?}"
+: "${COUNT_FILE:?}"
+count=0
+if [[ -f "$COUNT_FILE" ]]; then
+  count="$(cat "$COUNT_FILE")"
+fi
+count=$((count + 1))
+printf '%s\n' "$count" > "$COUNT_FILE"
+{
+  for arg in "$@"; do
+    printf '[%s]' "$arg"
+  done
+  printf '\n'
+} >> "$ARGS_LOG"
+if [[ "$count" == "1" ]]; then
+  exit 0
+fi
+echo "teammate mode stop" >&2
+exit 7
+EOF_FAKE_CLAUDE_TEAMMATE_MODE
+chmod +x "$FAKE_BIN5A/claude"
+printf 'execute prompt\n' > "$PROJECT5A/.ralph/prompts/execute.md"
+printf 'handoff prompt\n' > "$PROJECT5A/.ralph/prompts/handoff.md"
+printf 'spec\n' > "$PROJECT5A/.ralph/plans/SPECIFICATION.md"
+printf 'plan\n' > "$PROJECT5A/.ralph/plans/EXECUTION_PLAN.md"
+
+rm -f "$ARGS_LOG5A" "$COUNT_FILE5A"
+run_start "$PROJECT5A" "$HOME5A" "$FAKE_BIN5A" env ARGS_LOG="$ARGS_LOG5A" COUNT_FILE="$COUNT_FILE5A" "$START_BIN" --teammate-mode tmux
+assert_eq "$RUN_STATUS" "1" "--teammate-mode interactive two-pass exit status"
+assert_eq "$(wc -l < "$ARGS_LOG5A" | tr -d '[:space:]')" "3" "--teammate-mode interactive execute plus handoff plus execute"
+TEAMMATE_EXEC_FIRST="$(sed -n '1p' "$ARGS_LOG5A")"
+TEAMMATE_HANDOFF="$(sed -n '2p' "$ARGS_LOG5A")"
+TEAMMATE_EXEC_SECOND="$(sed -n '3p' "$ARGS_LOG5A")"
+assert_contains "$TEAMMATE_EXEC_FIRST" "[--teammate-mode][tmux]" "interactive execute passes teammate mode"
+assert_contains "$TEAMMATE_HANDOFF" "[--teammate-mode][tmux]" "interactive handoff passes teammate mode"
+assert_contains "$TEAMMATE_HANDOFF" "[--continue][handoff prompt]" "interactive handoff still resumes Claude"
+assert_contains "$TEAMMATE_EXEC_SECOND" "[--teammate-mode][tmux]" "subsequent execute pass keeps teammate mode"
+
+rm -f "$ARGS_LOG5A" "$COUNT_FILE5A"
+run_start "$PROJECT5A" "$HOME5A" "$FAKE_BIN5A" env ARGS_LOG="$ARGS_LOG5A" COUNT_FILE="$COUNT_FILE5A" "$START_BIN" --unattended --teammate-mode auto
+assert_eq "$RUN_STATUS" "1" "--unattended --teammate-mode exit status"
+UNATTENDED_TEAMMATE_CALL="$(sed -n '1p' "$ARGS_LOG5A")"
+assert_contains "$UNATTENDED_TEAMMATE_CALL" "[--teammate-mode][auto]" "unattended execute passes teammate mode"
+assert_contains "$UNATTENDED_TEAMMATE_CALL" "[-p][execute prompt]" "unattended execute stays non-interactive"
+
+run_start "$PROJECT5A" "$HOME5A" "$FAKE_BIN5A" "$START_BIN" --teammate-mode invalid
+assert_eq "$RUN_STATUS" "2" "--teammate-mode invalid exit status"
+assert_contains "$RUN_STDERR" "--teammate-mode must be one of: auto, in-process, tmux" "--teammate-mode invalid validation message"
+
 # Case 7: container mode uses /<basename> default workdir and honors --workdir.
 HOME5="$TMP_ROOT/home-container"
 PROJECT5="$TMP_ROOT/project-container-default"

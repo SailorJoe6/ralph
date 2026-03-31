@@ -147,6 +147,7 @@ Options:
   -y, --yolo              Enable all permissions without unattended execution
   --codex                 Use Codex instead of Claude
   --claude                Use Claude instead of Codex
+  --teammate-mode <mode>  Pass through Claude teammate mode: auto, in-process, or tmux
   --container <name>      Execute commands inside specified container
   --workdir <path>        Container working directory (default: /<basename>)
   --callback <script>     Run script after each pass
