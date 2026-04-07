@@ -1500,3 +1500,28 @@ time="2026-04-06T17:22:44-07:00" level=info msg=NewConnection DisableClientMulti
 time="2026-04-06T17:22:44-07:00" level=info msg="Server closing listener. No longer accepting connections."
 time="2026-04-06T17:22:44-07:00" level=info msg=ConnectionClosed connectionID=23
 time="2026-04-06T17:22:44-07:00" level=info msg="stats stopped: context canceled"
+Starting server with Config HP="127.0.0.1:13647"|T="28800000"|R="false"|L="info"
+time="2026-04-06T17:25:32-07:00" level=info msg="Server ready. Accepting connections."
+time="2026-04-06T17:25:32-07:00" level=warning msg="secure_file_priv is set to \"\", which is insecure."
+time="2026-04-06T17:25:32-07:00" level=warning msg="Any user with GRANT FILE privileges will be able to read any file which the sql-server process can read."
+time="2026-04-06T17:25:32-07:00" level=warning msg="Please consider restarting the server with secure_file_priv set to a safe (or non-existent) directory."
+time="2026-04-06T17:25:32-07:00" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=1
+time="2026-04-06T17:25:32-07:00" level=info msg=ConnectionClosed connectionID=1
+time="2026-04-06T17:25:32-07:00" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=2
+time="2026-04-06T17:25:32-07:00" level=info msg=ConnectionClosed connectionID=2
+time="2026-04-06T17:25:32-07:00" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=3
+time="2026-04-06T17:25:32-07:00" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=4
+time="2026-04-06T17:25:32-07:00" level=info msg=ConnectionClosed connectionID=3
+time="2026-04-06T17:25:32-07:00" level=warning msg="error running query" connectTime="2026-04-06 17:25:32.98185 -0700 PDT m=+0.494757584" connectionDb=ralph connectionID=4 error="nothing to commit" queryTime="2026-04-06 17:25:32.992662 -0700 PDT m=+0.505569917"
+time="2026-04-06T17:25:32-07:00" level=warning msg="error running query" connectTime="2026-04-06 17:25:32.98185 -0700 PDT m=+0.494757584" connectionDb=ralph connectionID=4 error="nothing to commit" queryTime="2026-04-06 17:25:32.998467 -0700 PDT m=+0.511375459"
+time="2026-04-06T17:25:33-07:00" level=info msg=ConnectionClosed connectionID=4
+time="2026-04-06T17:25:34-07:00" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=5
+time="2026-04-06T17:25:34-07:00" level=info msg=ConnectionClosed connectionID=5
+time="2026-04-06T17:25:34-07:00" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=6
+time="2026-04-06T17:25:34-07:00" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=7
+time="2026-04-06T17:25:34-07:00" level=info msg=ConnectionClosed connectionID=6
+time="2026-04-06T17:25:34-07:00" level=warning msg="error running query" connectTime="2026-04-06 17:25:34.895398 -0700 PDT m=+2.408326542" connectionDb=ralph connectionID=7 error="nothing to commit" queryTime="2026-04-06 17:25:34.909853 -0700 PDT m=+2.422781167"
+time="2026-04-06T17:25:35-07:00" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=8
+time="2026-04-06T17:25:35-07:00" level=warning msg="error running query" connectTime="2026-04-06 17:25:35.101752 -0700 PDT m=+2.614682251" connectionDb=ralph connectionID=8 error="fatal: remote 'origin' not found.\nPlease make sure the remote exists." queryTime="2026-04-06 17:25:35.106425 -0700 PDT m=+2.619355959"
+time="2026-04-06T17:25:35-07:00" level=info msg=ConnectionClosed connectionID=8
+time="2026-04-06T17:25:35-07:00" level=info msg=ConnectionClosed connectionID=7
