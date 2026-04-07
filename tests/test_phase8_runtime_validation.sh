@@ -144,6 +144,34 @@ DEFAULT_PREPARE_CODEX="$(cat "$TOOL_LOG1")"
 assert_contains "$DEFAULT_PREPARE_CODEX" "codex:" "default flow uses Codex when configured"
 assert_contains "$DEFAULT_PREPARE_CODEX" "[PREPARE_PROMPT_TEXT]" "default flow uses prepare prompt for Codex"
 
+# Case 1b: blocked docs nested under blocked/ still trigger blocked prompt.
+HOME1B="$TMP_ROOT/home-blocked-nested"
+PROJECT1B="$TMP_ROOT/project-blocked-nested"
+FAKE_BIN1B="$TMP_ROOT/fake-bin-blocked-nested"
+TOOL_LOG1B="$TMP_ROOT/blocked-nested.log"
+mkdir -p "$HOME1B/.ralph" "$PROJECT1B/.ralph/prompts" "$PROJECT1B/.ralph/plans/blocked/nested" "$FAKE_BIN1B"
+cat > "$FAKE_BIN1B/claude" <<'EOF_FAKE_CLAUDE_BLOCKED_NESTED'
+#!/usr/bin/env bash
+set -euo pipefail
+: "${TOOL_LOG:?}"
+printf 'claude:' >> "$TOOL_LOG"
+for arg in "$@"; do
+  printf '[%s]' "$arg" >> "$TOOL_LOG"
+done
+printf '\n' >> "$TOOL_LOG"
+exit 7
+EOF_FAKE_CLAUDE_BLOCKED_NESTED
+chmod +x "$FAKE_BIN1B/claude"
+printf 'BLOCKED_PROMPT_TEXT\n' > "$PROJECT1B/.ralph/prompts/blocked.md"
+printf 'blocked spec\n' > "$PROJECT1B/.ralph/plans/blocked/nested/SPECIFICATION.md"
+
+rm -f "$TOOL_LOG1B"
+run_start "$PROJECT1B" "$HOME1B" "$FAKE_BIN1B" env TOOL_LOG="$TOOL_LOG1B" "$START_BIN"
+assert_eq "$RUN_STATUS" "1" "blocked nested Claude exit status"
+BLOCKED_NESTED_CLAUDE="$(cat "$TOOL_LOG1B")"
+assert_contains "$BLOCKED_NESTED_CLAUDE" "claude:" "blocked nested uses Claude by default"
+assert_contains "$BLOCKED_NESTED_CLAUDE" "[BLOCKED_PROMPT_TEXT]" "blocked nested uses blocked prompt"
+
 # Case 2: missing active prompt shows template-copy guidance.
 HOME1="$TMP_ROOT/home-missing-prompt"
 PROJECT1="$TMP_ROOT/project-missing-prompt"

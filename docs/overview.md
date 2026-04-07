@@ -23,7 +23,7 @@ Runtime mode requires a V2 project root for the standard design -> plan -> execu
 - Freestyle is always interactive. If `--unattended` is passed with `--freestyle`, Ralph treats it as `--yolo` (elevated permissions, still interactive). See [permissions.md](permissions.md).
 
 **Blocked Mode**
-- If no planning docs exist but blocked planning docs are present under `$(dirname "$SPECIFICATION")/blocked`, Ralph runs the blocked prompt.
+- If no planning docs exist but blocked planning docs are present under `$(dirname "$SPECIFICATION")/blocked` (including subfolders), Ralph runs the blocked prompt.
 - Note: our execute prompt instructs your AI Agent (Claude, Codex) to move the plannign docs there if it gets bloecked so you can step in and help. 
 - With default path settings this is `.ralph/plans/blocked/`.
 

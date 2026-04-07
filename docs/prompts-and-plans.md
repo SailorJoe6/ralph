@@ -30,7 +30,7 @@ Required prompt files:
 - This is all configurable via environment variables; see [configuration.md](configuration.md).
 
 **Blocked Plans**
-- Blocked-doc detection checks for the presence of the plan and spec under `.ralph/plans/blocked/` by default. 
+- Blocked-doc detection checks for the presence of the plan and spec under `.ralph/plans/blocked/` (recursively, including subfolders) by default. 
 - If blocked docs are present, Ralph feeds `.ralph/prompts/blocked.md` to the AI Agent in interactive mode.  
 
 ---

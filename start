@@ -506,7 +506,7 @@ while :; do
       exit 1
     else
       # Neither planning document exists - check if blocked before entering design mode
-      if [[ -f "$BLOCKED_DIR/SPECIFICATION.md" || -f "$BLOCKED_DIR/EXECUTION_PLAN.md" ]]; then
+      if [[ -d "$BLOCKED_DIR" ]] && find "$BLOCKED_DIR" -type f \( -name "SPECIFICATION.md" -o -name "EXECUTION_PLAN.md" \) -print -quit | grep -q .; then
         PROMPT="$BLOCKED_PROMPT"
         BLOCKED_MODE=1
       fi
