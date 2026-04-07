@@ -1525,3 +1525,7 @@ time="2026-04-06T17:25:35-07:00" level=info msg=NewConnection DisableClientMulti
 time="2026-04-06T17:25:35-07:00" level=warning msg="error running query" connectTime="2026-04-06 17:25:35.101752 -0700 PDT m=+2.614682251" connectionDb=ralph connectionID=8 error="fatal: remote 'origin' not found.\nPlease make sure the remote exists." queryTime="2026-04-06 17:25:35.106425 -0700 PDT m=+2.619355959"
 time="2026-04-06T17:25:35-07:00" level=info msg=ConnectionClosed connectionID=8
 time="2026-04-06T17:25:35-07:00" level=info msg=ConnectionClosed connectionID=7
+time="2026-04-06T17:26:22-07:00" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=9
+time="2026-04-06T17:26:22-07:00" level=info msg=ConnectionClosed connectionID=9
+time="2026-04-06T17:26:22-07:00" level=info msg="Server closing listener. No longer accepting connections."
+time="2026-04-06T17:26:22-07:00" level=info msg="stats stopped: context canceled"
