@@ -1,3 +1,8 @@
+---
+name: design
+description: Use for Ralph's design/specification phase to interview the user and produce .ralph/plans/SPECIFICATION.md.
+---
+
 Study the following files in order to understand the project:
 
 1. **[README.md](README.md)** - Project overview, features, and configuration

@@ -1,3 +1,8 @@
+---
+name: plan
+description: Use for Ralph's planning phase to turn .ralph/plans/SPECIFICATION.md into .ralph/plans/EXECUTION_PLAN.md.
+---
+
 Study the following files in order to understand the project:
 
 1. **[README.md](README.md)** - Project overview, features, and configuration

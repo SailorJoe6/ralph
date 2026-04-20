@@ -1,3 +1,8 @@
+---
+name: blocked
+description: Use when Ralph detects blocked planning docs and needs help explaining the blocker and getting the project unblocked.
+---
+
 Study the following files in order to understand the project:
 
 1. **[README.md](README.md)** - Project overview, features, and configuration

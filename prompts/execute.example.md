@@ -1,3 +1,8 @@
+---
+name: execute
+description: Use for Ralph's execution phase to implement the current spec and plan, update docs/tests, and keep planning artifacts current.
+---
+
 Study the following files in order to understand the project:
 
 1. **[README.md](README.md)** - Project overview, features, and configuration
@@ -23,4 +28,3 @@ Remember to maintain good documentation quality.  All new features and changes t
 Remember to maintain high test coverage.  All new features will need tests.  Bug fixes need tests as well.
 
 That is your workflow. Do all these things for the one task you choose.  Only complete these things for one task, then report back on the status and await further instructions.  
-

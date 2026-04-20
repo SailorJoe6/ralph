@@ -1,3 +1,8 @@
+---
+name: execute
+description: Use for Ralph's execution phase in beads-tracked projects to implement the current spec and plan while keeping beads, docs, and tests current.
+---
+
 Study the following files in order to understand the project:
 
 1. **[README.md](README.md)** - Project overview, features, and configuration

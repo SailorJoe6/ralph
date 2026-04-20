@@ -24,9 +24,9 @@ Initialize Ralph in a project using the V2 `.ralph/` layout.
 Options:
   --project <path>  Initialize the target project path (defaults to current directory)
   --stealth         Add folders created by this run to .git/info/exclude
-  --codex           Set up .codex/commands/ symlinks to Ralph prompts
+  --codex           Set up Codex-compatible skill entrypoints for Ralph prompts
   --beads           Run `bd init` and use .example.beads.md prompt templates when available
-  --claude          Set up .claude/commands/ symlinks to Ralph prompts
+  --claude          Set up Claude-compatible skill entrypoints for Ralph prompts
   -y, --yolo        Accepted for compatibility; has no effect in deterministic init
   -h, --help        Show this help message
 
@@ -86,17 +86,20 @@ copy_prompt_templates() {
   done
 }
 
-setup_commands_symlinks() {
+setup_skill_entrypoints() {
   local tool_dir="$1"
-  local rel_prompt_prefix="../../.ralph/prompts"
-  local commands_dir="$PROJECT_ROOT/$tool_dir/commands"
+  local rel_prompt_prefix="../../../.ralph/prompts"
+  local skills_dir="$PROJECT_ROOT/$tool_dir/skills"
   local prompt_name=""
+  local skill_dir=""
 
   ensure_top_level_dir "$tool_dir"
-  mkdir -p "$commands_dir"
+  mkdir -p "$skills_dir"
 
-  for prompt_name in design plan execute handoff prepare; do
-    ln -sf "$rel_prompt_prefix/${prompt_name}.md" "$commands_dir/${prompt_name}.md"
+  for prompt_name in design plan execute handoff prepare blocked; do
+    skill_dir="$skills_dir/$prompt_name"
+    mkdir -p "$skill_dir"
+    ln -sf "$rel_prompt_prefix/${prompt_name}.md" "$skill_dir/SKILL.md"
   done
 }
 
@@ -126,7 +129,7 @@ add_stealth_excludes() {
   local rel_dir=""
   local git_exclude_path=""
 
-  for rel_dir in .ralph .beads .codex .claude; do
+  for rel_dir in .ralph .beads .agents .codex .claude; do
     if top_level_created "$rel_dir"; then
       created_entries+=("${rel_dir}/")
     fi
@@ -235,11 +238,13 @@ if [[ "$USE_BEADS" == "1" ]]; then
 fi
 
 if [[ "$SETUP_CLAUDE" == "1" ]]; then
-  setup_commands_symlinks ".claude"
+  setup_skill_entrypoints ".agents"
+  setup_skill_entrypoints ".claude"
 fi
 
 if [[ "$SETUP_CODEX" == "1" ]]; then
-  setup_commands_symlinks ".codex"
+  setup_skill_entrypoints ".agents"
+  setup_skill_entrypoints ".codex"
 fi
 
 if [[ "$STEALTH" == "1" ]]; then

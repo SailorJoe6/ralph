@@ -47,7 +47,7 @@ Then initialize each project from its root:
 # Codex workflow + beads templates
 ralph init --codex --beads
 
-# Claude workflow + beads templates + Claude slash-command symlinks
+# Claude workflow + beads templates + Claude skill scaffolding
 ralph init --claude --beads
 
 # Add newly-created setup folders to .git/info/exclude
@@ -58,7 +58,7 @@ ralph init --stealth --claude --codex --beads
 
 **IMPORTANT:** Prompts are project-specific and must be customized for your project before using ralph.
 
-Recommended setup is to run [ralph init](ralph/docs/init.md) from your project root. It deterministically creates the V2 `.ralph` layout, copies prompt templates, optionally runs beads setup, and can create optional custom slash-command symlinks to allow you to "try out" our prompts:
+Recommended setup is to run [ralph init](ralph/docs/init.md) from your project root. It deterministically creates the V2 `.ralph` layout, copies prompt templates, optionally runs beads setup, and can scaffold assistant skills that point at those prompts:
 
 Then customize the generated prompts for your project.
 
@@ -190,20 +190,17 @@ If none are set, ralph uses `/<basename>` as the default.
 
 ## Integration with AI Assistants (Optional)
 
-For slash command support in Claude/Codex, create symlinks from your AI assistant's command directory to ralph's prompts:
+`ralph init --claude` and `ralph init --codex` now scaffold skills instead of custom slash commands. Ralph keeps `.ralph/prompts/*.md` as the source of truth, adds Agent Skills-compatible frontmatter to those prompts, and creates skill entrypoints that point back to them:
 
-```bash
-mkdir -p .claude/commands
-ln -s ../../.ralph/prompts/design.md .claude/commands/design.md
-ln -s ../../.ralph/prompts/plan.md .claude/commands/plan.md
-ln -s ../../.ralph/prompts/execute.md .claude/commands/execute.md
-ln -s ../../.ralph/prompts/handoff.md .claude/commands/handoff.md
-ln -s ../../.ralph/prompts/prepare.md .claude/commands/prepare.md
+```text
+.agents/skills/<phase>/SKILL.md
+.claude/skills/<phase>/SKILL.md
+.codex/skills/<phase>/SKILL.md
 ```
 
-Then you can run `/design`, `/plan`, `/execute`, `/handoff`, or `/prepare` directly in your AI assistant.
+The shared `.agents/skills/` tree follows the open Agent Skills layout used by tools such as Cursor. Native `.claude/skills/` and `.codex/skills/` entrypoints are generated only when you request them with the matching flags.
 
-**Note:** This is optional. You can always invoke ralph via `ralph` without symlinks. The handoff phase runs automatically after each execute pass, but the `/handoff` command can be useful for manual handoff preparation. The `/prepare` command is used for freestyle mode.
+This setup is optional. You can always invoke Ralph via `ralph` without any assistant-specific scaffolding.
 
 ## Workflow Phases
 

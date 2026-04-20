@@ -82,6 +82,18 @@ assert_file_equals() {
   fi
 }
 
+assert_symlink_target() {
+  local path="$1"
+  local expected="$2"
+  local label="$3"
+  if [[ ! -L "$path" ]]; then
+    echo "Assertion failed: $label" >&2
+    echo "Expected symlink: $path" >&2
+    exit 1
+  fi
+  assert_eq "$(readlink "$path")" "$expected" "$label"
+}
+
 run_cmd() {
   local stdout_file
   local stderr_file
@@ -164,9 +176,9 @@ assert_file_equals "$RALPH_DIR/prompts/blocked.example.md" "$PROJECT3/.ralph/pro
 # Re-run with existing .beads should remain successful and skip repeated bd init.
 run_cmd env PATH="$FAKE_BIN:$PATH" BD_LOG="$BD_LOG" "$RALPH_BIN" init --project "$PROJECT3" --beads
 assert_eq "$RUN_STATUS" "0" "re-run init --beads exit status"
-assert_eq "$(wc -l < "$BD_LOG")" "1" "bd init not repeated when .beads already exists"
+assert_eq "$(wc -l < "$BD_LOG" | tr -d '[:space:]')" "1" "bd init not repeated when .beads already exists"
 
-# Case 5: --stealth excludes only newly created folders and symlink setup targets .ralph prompts.
+# Case 5: --stealth excludes only newly created folders and skill setup targets .ralph prompts.
 PROJECT4="$TMP_ROOT/project-stealth"
 mkdir -p "$PROJECT4"
 (
@@ -179,16 +191,20 @@ EXCLUDE_FILE="$PROJECT4/.git/info/exclude"
 assert_exists "$EXCLUDE_FILE" "exclude file exists"
 EXCLUDE_CONTENT="$(cat "$EXCLUDE_FILE")"
 assert_contains "$EXCLUDE_CONTENT" ".ralph/" "exclude includes .ralph"
+assert_contains "$EXCLUDE_CONTENT" ".agents/" "exclude includes .agents"
 assert_contains "$EXCLUDE_CONTENT" ".claude/" "exclude includes .claude"
 assert_contains "$EXCLUDE_CONTENT" ".codex/" "exclude includes .codex"
 assert_not_contains "$EXCLUDE_CONTENT" ".beads/" "exclude omits .beads when not created"
-assert_eq "$(readlink "$PROJECT4/.claude/commands/design.md")" "../../.ralph/prompts/design.md" "claude symlink target"
-assert_eq "$(readlink "$PROJECT4/.codex/commands/prepare.md")" "../../.ralph/prompts/prepare.md" "codex symlink target"
+assert_symlink_target "$PROJECT4/.agents/skills/design/SKILL.md" "../../../.ralph/prompts/design.md" "shared design skill symlink target"
+assert_symlink_target "$PROJECT4/.agents/skills/blocked/SKILL.md" "../../../.ralph/prompts/blocked.md" "shared blocked skill symlink target"
+assert_symlink_target "$PROJECT4/.claude/skills/design/SKILL.md" "../../../.ralph/prompts/design.md" "claude skill symlink target"
+assert_symlink_target "$PROJECT4/.codex/skills/prepare/SKILL.md" "../../../.ralph/prompts/prepare.md" "codex skill symlink target"
 
 # Re-run should not duplicate exclude entries.
 run_cmd "$RALPH_BIN" init --project "$PROJECT4" --stealth --claude --codex
 assert_eq "$RUN_STATUS" "0" "re-run init --stealth exit status"
 assert_eq "$(grep -Fxc '.ralph/' "$EXCLUDE_FILE")" "1" "exclude .ralph not duplicated"
+assert_eq "$(grep -Fxc '.agents/' "$EXCLUDE_FILE")" "1" "exclude .agents not duplicated"
 assert_eq "$(grep -Fxc '.claude/' "$EXCLUDE_FILE")" "1" "exclude .claude not duplicated"
 assert_eq "$(grep -Fxc '.codex/' "$EXCLUDE_FILE")" "1" "exclude .codex not duplicated"
 
