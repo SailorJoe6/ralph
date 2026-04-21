@@ -18,6 +18,7 @@ Required prompt files:
 - Beads variants live in `~/.local/share/ralph/prompts/*.example.beads.md` where available.
 - `ralph init` copies templates into `<project_root>/.ralph/prompts/`, preserving any existing destination files.
 - The bundled templates now include Agent Skills-compatible frontmatter so the same files can serve as valid `SKILL.md` payloads.
+- Runtime strips a leading YAML frontmatter block before forwarding prompt text to Claude or Codex, so both plain prompts and skill-manifest prompts remain valid.
 - These default prompts reference V2 planning paths under `.ralph/plans/...`, so if you choose to customize their locations, update the prompts too!
 - If a required runtime prompt is missing, `ralph` exits and prints prompt-creation guidance.
 

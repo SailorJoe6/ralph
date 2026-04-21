@@ -67,6 +67,40 @@ freestyle_fallback_prompt() {
   return 1
 }
 
+load_prompt_text() {
+  local prompt_path="$1"
+
+  awk '
+    NR == 1 {
+      if ($0 == "---") {
+        in_frontmatter = 1
+        next
+      }
+      print
+      next
+    }
+
+    in_frontmatter {
+      if ($0 == "---" || $0 == "...") {
+        in_frontmatter = 0
+        closed_frontmatter = 1
+        next
+      }
+      frontmatter_buffer = frontmatter_buffer $0 ORS
+      next
+    }
+
+    { print }
+
+    END {
+      if (in_frontmatter && !closed_frontmatter) {
+        print "---"
+        printf "%s", frontmatter_buffer
+      }
+    }
+  ' "$prompt_path"
+}
+
 find_runtime_ancestor_root_for_diagnostics() {
   local current="$PROJECT_ROOT"
   local parent=""
@@ -574,7 +608,7 @@ while :; do
   fi
 
   ensure_container_running
-  prompt_text="$(cat "$PROMPT")"
+  prompt_text="$(load_prompt_text "$PROMPT")"
   if [[ $NONINTERACTIVE -eq 1 ]]; then
     error_offset=0
     output_offset=0
@@ -629,7 +663,7 @@ while :; do
   if [[ $EXECUTE_MODE -eq 1 && $FREESTYLE -eq 0 ]]; then
     if [[ -f "$SPECIFICATION" && -f "$EXECUTION_PLAN" ]]; then
       if [[ -f "$HANDOFF_PROMPT" ]]; then
-        handoff_text="$(cat "$HANDOFF_PROMPT")"
+        handoff_text="$(load_prompt_text "$HANDOFF_PROMPT")"
         handoff_require_tty=1
         if [[ $UNATTENDED -eq 1 ]]; then
           handoff_require_tty=0

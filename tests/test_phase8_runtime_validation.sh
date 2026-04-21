@@ -124,7 +124,13 @@ printf '\n' >> "$TOOL_LOG"
 exit 7
 EOF_FAKE_CODEX_DEFAULT_PREPARE
 chmod +x "$FAKE_BIN1/claude" "$FAKE_BIN1/codex"
-printf 'PREPARE_PROMPT_TEXT\n' > "$PROJECT1/.ralph/prompts/prepare.md"
+cat > "$PROJECT1/.ralph/prompts/prepare.md" <<'EOF_PREPARE_WITH_FRONTMATTER'
+---
+name: prepare
+description: test frontmatter
+---
+PREPARE_PROMPT_TEXT
+EOF_PREPARE_WITH_FRONTMATTER
 
 rm -f "$TOOL_LOG1"
 run_start "$PROJECT1" "$HOME1" "$FAKE_BIN1" env TOOL_LOG="$TOOL_LOG1" "$START_BIN"
@@ -132,6 +138,7 @@ assert_eq "$RUN_STATUS" "1" "default prepare Claude exit status"
 DEFAULT_PREPARE_CLAUDE="$(cat "$TOOL_LOG1")"
 assert_contains "$DEFAULT_PREPARE_CLAUDE" "claude:" "default flow uses Claude by default"
 assert_contains "$DEFAULT_PREPARE_CLAUDE" "[PREPARE_PROMPT_TEXT]" "default flow uses prepare prompt for Claude"
+assert_not_contains "$DEFAULT_PREPARE_CLAUDE" "[name: prepare]" "default flow strips prepare frontmatter for Claude"
 
 cat > "$HOME1/.ralph/.env" <<'EOF_HOME_DEFAULT_PREPARE'
 USECODEX=1
@@ -143,6 +150,7 @@ assert_eq "$RUN_STATUS" "1" "default prepare Codex exit status"
 DEFAULT_PREPARE_CODEX="$(cat "$TOOL_LOG1")"
 assert_contains "$DEFAULT_PREPARE_CODEX" "codex:" "default flow uses Codex when configured"
 assert_contains "$DEFAULT_PREPARE_CODEX" "[PREPARE_PROMPT_TEXT]" "default flow uses prepare prompt for Codex"
+assert_not_contains "$DEFAULT_PREPARE_CODEX" "[name: prepare]" "default flow strips prepare frontmatter for Codex"
 
 # Case 1b: blocked docs nested under blocked/ still trigger blocked prompt.
 HOME1B="$TMP_ROOT/home-blocked-nested"
@@ -162,7 +170,13 @@ printf '\n' >> "$TOOL_LOG"
 exit 7
 EOF_FAKE_CLAUDE_BLOCKED_NESTED
 chmod +x "$FAKE_BIN1B/claude"
-printf 'BLOCKED_PROMPT_TEXT\n' > "$PROJECT1B/.ralph/prompts/blocked.md"
+cat > "$PROJECT1B/.ralph/prompts/blocked.md" <<'EOF_BLOCKED_WITH_FRONTMATTER'
+---
+name: blocked
+description: test frontmatter
+---
+BLOCKED_PROMPT_TEXT
+EOF_BLOCKED_WITH_FRONTMATTER
 printf 'blocked spec\n' > "$PROJECT1B/.ralph/plans/blocked/nested/SPECIFICATION.md"
 
 rm -f "$TOOL_LOG1B"
@@ -171,6 +185,7 @@ assert_eq "$RUN_STATUS" "1" "blocked nested Claude exit status"
 BLOCKED_NESTED_CLAUDE="$(cat "$TOOL_LOG1B")"
 assert_contains "$BLOCKED_NESTED_CLAUDE" "claude:" "blocked nested uses Claude by default"
 assert_contains "$BLOCKED_NESTED_CLAUDE" "[BLOCKED_PROMPT_TEXT]" "blocked nested uses blocked prompt"
+assert_not_contains "$BLOCKED_NESTED_CLAUDE" "[name: blocked]" "blocked flow strips frontmatter"
 
 # Case 2: missing active prompt shows template-copy guidance.
 HOME1="$TMP_ROOT/home-missing-prompt"
@@ -228,7 +243,13 @@ set -euo pipefail
 exit 7
 EOF_FAKE_CLAUDE_UNATTENDED_PLAN
 chmod +x "$FAKE_BIN2B/claude"
-printf 'plan prompt\n' > "$PROJECT2B/.ralph/prompts/plan.md"
+cat > "$PROJECT2B/.ralph/prompts/plan.md" <<'EOF_PLAN_WITH_FRONTMATTER'
+---
+name: plan
+description: test frontmatter
+---
+plan prompt
+EOF_PLAN_WITH_FRONTMATTER
 printf 'spec\n' > "$PROJECT2B/.ralph/plans/SPECIFICATION.md"
 
 run_start "$PROJECT2B" "$HOME2B" "$FAKE_BIN2B" env ARGS_LOG="$ARGS_LOG2B" "$START_BIN" --unattended
@@ -238,6 +259,34 @@ UNATTENDED_PLAN_ARGS="$(cat "$ARGS_LOG2B")"
 assert_contains "$UNATTENDED_PLAN_ARGS" "[--dangerously-skip-permissions]" "unattended plan still enables yolo permission flag"
 assert_not_contains "$UNATTENDED_PLAN_ARGS" "[-p]" "unattended plan stays interactive"
 assert_contains "$UNATTENDED_PLAN_ARGS" "[plan prompt]" "unattended plan uses plan prompt"
+assert_not_contains "$UNATTENDED_PLAN_ARGS" "[name: plan]" "unattended plan strips frontmatter"
+
+# Case 3c: plain prompts without frontmatter still pass through unchanged.
+HOME2C="$TMP_ROOT/home-plan-plain"
+PROJECT2C="$TMP_ROOT/project-plan-plain"
+FAKE_BIN2C="$TMP_ROOT/fake-bin-plan-plain"
+ARGS_LOG2C="$TMP_ROOT/plain-plan-args.log"
+mkdir -p "$HOME2C" "$PROJECT2C/.ralph/prompts" "$PROJECT2C/.ralph/plans" "$FAKE_BIN2C"
+cat > "$FAKE_BIN2C/claude" <<'EOF_FAKE_CLAUDE_PLAN_PLAIN'
+#!/usr/bin/env bash
+set -euo pipefail
+: "${ARGS_LOG:?}"
+{
+  for arg in "$@"; do
+    printf '[%s]' "$arg"
+  done
+  printf '\n'
+} >> "$ARGS_LOG"
+exit 7
+EOF_FAKE_CLAUDE_PLAN_PLAIN
+chmod +x "$FAKE_BIN2C/claude"
+printf 'plain plan prompt\n' > "$PROJECT2C/.ralph/prompts/plan.md"
+printf 'spec\n' > "$PROJECT2C/.ralph/plans/SPECIFICATION.md"
+
+run_start "$PROJECT2C" "$HOME2C" "$FAKE_BIN2C" env ARGS_LOG="$ARGS_LOG2C" "$START_BIN"
+assert_eq "$RUN_STATUS" "1" "plain plan prompt exit status"
+PLAIN_PLAN_ARGS="$(cat "$ARGS_LOG2C")"
+assert_contains "$PLAIN_PLAN_ARGS" "[plain plan prompt]" "plain prompt remains unchanged"
 
 # Case 4: --freestyle --unattended normalizes to interactive yolo mode.
 HOME3="$TMP_ROOT/home-freestyle"
@@ -582,8 +631,20 @@ echo "teammate mode stop" >&2
 exit 7
 EOF_FAKE_CLAUDE_TEAMMATE_MODE
 chmod +x "$FAKE_BIN5A/claude"
-printf 'execute prompt\n' > "$PROJECT5A/.ralph/prompts/execute.md"
-printf 'handoff prompt\n' > "$PROJECT5A/.ralph/prompts/handoff.md"
+cat > "$PROJECT5A/.ralph/prompts/execute.md" <<'EOF_EXECUTE_WITH_FRONTMATTER'
+---
+name: execute
+description: test frontmatter
+---
+execute prompt
+EOF_EXECUTE_WITH_FRONTMATTER
+cat > "$PROJECT5A/.ralph/prompts/handoff.md" <<'EOF_HANDOFF_WITH_FRONTMATTER'
+---
+name: handoff
+description: test frontmatter
+---
+handoff prompt
+EOF_HANDOFF_WITH_FRONTMATTER
 printf 'spec\n' > "$PROJECT5A/.ralph/plans/SPECIFICATION.md"
 printf 'plan\n' > "$PROJECT5A/.ralph/plans/EXECUTION_PLAN.md"
 
@@ -597,6 +658,7 @@ TEAMMATE_EXEC_SECOND="$(sed -n '3p' "$ARGS_LOG5A")"
 assert_contains "$TEAMMATE_EXEC_FIRST" "[--teammate-mode][tmux]" "interactive execute passes teammate mode"
 assert_contains "$TEAMMATE_HANDOFF" "[--teammate-mode][tmux]" "interactive handoff passes teammate mode"
 assert_contains "$TEAMMATE_HANDOFF" "[--continue][handoff prompt]" "interactive handoff still resumes Claude"
+assert_not_contains "$TEAMMATE_HANDOFF" "[name: handoff]" "interactive handoff strips frontmatter"
 assert_contains "$TEAMMATE_EXEC_SECOND" "[--teammate-mode][tmux]" "subsequent execute pass keeps teammate mode"
 
 rm -f "$ARGS_LOG5A" "$COUNT_FILE5A"
@@ -605,6 +667,68 @@ assert_eq "$RUN_STATUS" "1" "--unattended --teammate-mode exit status"
 UNATTENDED_TEAMMATE_CALL="$(sed -n '1p' "$ARGS_LOG5A")"
 assert_contains "$UNATTENDED_TEAMMATE_CALL" "[--teammate-mode][auto]" "unattended execute passes teammate mode"
 assert_contains "$UNATTENDED_TEAMMATE_CALL" "[-p][execute prompt]" "unattended execute stays non-interactive"
+assert_not_contains "$UNATTENDED_TEAMMATE_CALL" "[name: execute]" "unattended execute strips frontmatter"
+
+# Case 6b: interactive Codex handoff strips frontmatter before resume prompt injection.
+HOME5B="$TMP_ROOT/home-codex-handoff"
+PROJECT5B="$TMP_ROOT/project-codex-handoff"
+FAKE_BIN5B="$TMP_ROOT/fake-bin-codex-handoff"
+ARGS_LOG5B="$TMP_ROOT/codex-handoff-args.log"
+COUNT_FILE5B="$TMP_ROOT/codex-handoff-count.txt"
+mkdir -p "$HOME5B" "$PROJECT5B/.ralph/prompts" "$PROJECT5B/.ralph/plans" "$FAKE_BIN5B"
+cat > "$FAKE_BIN5B/codex" <<'EOF_FAKE_CODEX_HANDOFF'
+#!/usr/bin/env bash
+set -euo pipefail
+: "${ARGS_LOG:?}"
+: "${COUNT_FILE:?}"
+count=0
+if [[ -f "$COUNT_FILE" ]]; then
+  count="$(cat "$COUNT_FILE")"
+fi
+count=$((count + 1))
+printf '%s\n' "$count" > "$COUNT_FILE"
+{
+  for arg in "$@"; do
+    printf '[%s]' "$arg"
+  done
+  printf '\n'
+} >> "$ARGS_LOG"
+if [[ "$count" == "3" ]]; then
+  echo "codex handoff stop" >&2
+  exit 7
+fi
+exit 0
+EOF_FAKE_CODEX_HANDOFF
+chmod +x "$FAKE_BIN5B/codex"
+cat > "$PROJECT5B/.ralph/prompts/execute.md" <<'EOF_CODEX_EXECUTE_WITH_FRONTMATTER'
+---
+name: execute
+description: test frontmatter
+---
+codex execute prompt
+EOF_CODEX_EXECUTE_WITH_FRONTMATTER
+cat > "$PROJECT5B/.ralph/prompts/handoff.md" <<'EOF_CODEX_HANDOFF_WITH_FRONTMATTER'
+---
+name: handoff
+description: test frontmatter
+---
+codex handoff prompt
+EOF_CODEX_HANDOFF_WITH_FRONTMATTER
+printf 'spec\n' > "$PROJECT5B/.ralph/plans/SPECIFICATION.md"
+printf 'plan\n' > "$PROJECT5B/.ralph/plans/EXECUTION_PLAN.md"
+
+rm -f "$ARGS_LOG5B" "$COUNT_FILE5B"
+run_start "$PROJECT5B" "$HOME5B" "$FAKE_BIN5B" env ARGS_LOG="$ARGS_LOG5B" COUNT_FILE="$COUNT_FILE5B" "$START_BIN" --codex
+assert_eq "$RUN_STATUS" "1" "interactive Codex handoff three-call exit status"
+assert_eq "$(wc -l < "$ARGS_LOG5B" | tr -d '[:space:]')" "3" "interactive Codex execute plus handoff plus execute"
+CODEX_HANDOFF_EXEC_FIRST="$(sed -n '1p' "$ARGS_LOG5B")"
+CODEX_HANDOFF_CALL="$(sed -n '2p' "$ARGS_LOG5B")"
+CODEX_HANDOFF_EXEC_SECOND="$(sed -n '3p' "$ARGS_LOG5B")"
+assert_contains "$CODEX_HANDOFF_EXEC_FIRST" "[codex execute prompt]" "interactive Codex execute uses stripped body prompt"
+assert_not_contains "$CODEX_HANDOFF_EXEC_FIRST" "[name: execute]" "interactive Codex execute strips frontmatter"
+assert_contains "$CODEX_HANDOFF_CALL" "[exec][resume][--last][codex handoff prompt]" "interactive Codex handoff resumes with stripped prompt body"
+assert_not_contains "$CODEX_HANDOFF_CALL" "[name: handoff]" "interactive Codex handoff strips frontmatter"
+assert_contains "$CODEX_HANDOFF_EXEC_SECOND" "[codex execute prompt]" "interactive Codex subsequent execute still uses stripped prompt body"
 
 run_start "$PROJECT5A" "$HOME5A" "$FAKE_BIN5A" "$START_BIN" --teammate-mode invalid
 assert_eq "$RUN_STATUS" "2" "--teammate-mode invalid exit status"
