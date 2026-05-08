@@ -11,13 +11,6 @@ ralph_load_config "$PROJECT_ROOT"
 # UNATTENDED must be CLI-only, ignore env variables
 UNATTENDED=0
 
-# Hardcoded prompt paths under the V2 project layout
-DESIGN_PROMPT="$PROJECT_ROOT/.ralph/prompts/design.md"
-PLAN_PROMPT="$PROJECT_ROOT/.ralph/prompts/plan.md"
-EXECUTE_PROMPT="$PROJECT_ROOT/.ralph/prompts/execute.md"
-HANDOFF_PROMPT="$PROJECT_ROOT/.ralph/prompts/handoff.md"
-PREPARE_PROMPT="$PROJECT_ROOT/.ralph/prompts/prepare.md"
-BLOCKED_PROMPT="$PROJECT_ROOT/.ralph/prompts/blocked.md"
 BLOCKED_DIR="$(dirname "$SPECIFICATION")/blocked"
 
 # Default behavior flags
@@ -32,6 +25,7 @@ TEAMMATE_MODE=""
 
 PASS=0
 RESUME_PENDING=0
+LEGACY_PROMPT_LAYOUT_WARNED=0
 
 trap 'exit 0' INT
 
@@ -56,15 +50,42 @@ EOF
 }
 
 freestyle_fallback_prompt() {
-  if [[ -f "$SCRIPT_DIR/prompts/prepare.example.beads.md" ]]; then
-    printf '%s\n' "$SCRIPT_DIR/prompts/prepare.example.beads.md"
+  if [[ -f "$SCRIPT_DIR/skills/prepare.example.beads.md" ]]; then
+    printf '%s\n' "$SCRIPT_DIR/skills/prepare.example.beads.md"
     return 0
   fi
-  if [[ -f "$SCRIPT_DIR/prompts/prepare.example.md" ]]; then
-    printf '%s\n' "$SCRIPT_DIR/prompts/prepare.example.md"
+  if [[ -f "$SCRIPT_DIR/skills/prepare.example.md" ]]; then
+    printf '%s\n' "$SCRIPT_DIR/skills/prepare.example.md"
     return 0
   fi
   return 1
+}
+
+phase_instruction_path() {
+  local phase="$1"
+  local skill_path="$PROJECT_ROOT/.ralph/skills/$phase/SKILL.md"
+  local legacy_prompt_path="$PROJECT_ROOT/.ralph/prompts/$phase.md"
+
+  if [[ -d "$PROJECT_ROOT/.ralph/skills" ]]; then
+    printf '%s\n' "$skill_path"
+    return 0
+  fi
+
+  if [[ -d "$PROJECT_ROOT/.ralph/prompts" ]]; then
+    if [[ -f "$legacy_prompt_path" ]]; then
+      if [[ "$LEGACY_PROMPT_LAYOUT_WARNED" == "0" ]]; then
+        cat >&2 <<EOF
+Warning: this project uses the legacy .ralph/prompts layout.
+Run 'ralph upgrade' to migrate it to .ralph/skills.
+EOF
+        LEGACY_PROMPT_LAYOUT_WARNED=1
+      fi
+      printf '%s\n' "$legacy_prompt_path"
+      return 0
+    fi
+  fi
+
+  printf '%s\n' "$skill_path"
 }
 
 load_prompt_text() {
@@ -282,6 +303,13 @@ if [[ $FREESTYLE -eq 0 ]]; then
     exit 1
   fi
 fi
+
+DESIGN_PROMPT="$(phase_instruction_path design)"
+PLAN_PROMPT="$(phase_instruction_path plan)"
+EXECUTE_PROMPT="$(phase_instruction_path execute)"
+HANDOFF_PROMPT="$(phase_instruction_path handoff)"
+PREPARE_PROMPT="$(phase_instruction_path prepare)"
+BLOCKED_PROMPT="$(phase_instruction_path blocked)"
 
 if [[ -n "$LOG_DIR" ]]; then
   mkdir -p "$LOG_DIR"
@@ -567,43 +595,43 @@ while :; do
     fi
   fi
 
-  # Validate prompt file exists and provide helpful error message
+  # Validate instruction file exists and provide helpful error message
   if [[ ! -f "$PROMPT" ]]; then
-    echo "Error: Prompt file not found: $PROMPT"
+    echo "Error: Instruction file not found: $PROMPT"
     echo ""
-    echo "Prompts are project-specific and must be customized for your project."
+    echo "Ralph skills are project-specific and must be customized for your project."
     echo "Copy from the example template(s):"
     echo ""
     missing_any=0
     if [[ ! -f "$DESIGN_PROMPT" ]]; then
-      echo "  cp \"$SCRIPT_DIR/prompts/design.example.md\" \"$DESIGN_PROMPT\""
+      echo "  mkdir -p \"$(dirname "$DESIGN_PROMPT")\" && cp \"$SCRIPT_DIR/skills/design.example.md\" \"$DESIGN_PROMPT\""
       missing_any=1
     fi
     if [[ ! -f "$PLAN_PROMPT" ]]; then
-      echo "  cp \"$SCRIPT_DIR/prompts/plan.example.md\" \"$PLAN_PROMPT\""
+      echo "  mkdir -p \"$(dirname "$PLAN_PROMPT")\" && cp \"$SCRIPT_DIR/skills/plan.example.md\" \"$PLAN_PROMPT\""
       missing_any=1
     fi
     if [[ ! -f "$EXECUTE_PROMPT" ]]; then
-      echo "  cp \"$SCRIPT_DIR/prompts/execute.example.md\" \"$EXECUTE_PROMPT\""
+      echo "  mkdir -p \"$(dirname "$EXECUTE_PROMPT")\" && cp \"$SCRIPT_DIR/skills/execute.example.md\" \"$EXECUTE_PROMPT\""
       missing_any=1
     fi
     if [[ ! -f "$PREPARE_PROMPT" ]]; then
-      echo "  cp \"$SCRIPT_DIR/prompts/prepare.example.md\" \"$PREPARE_PROMPT\""
+      echo "  mkdir -p \"$(dirname "$PREPARE_PROMPT")\" && cp \"$SCRIPT_DIR/skills/prepare.example.md\" \"$PREPARE_PROMPT\""
       missing_any=1
     fi
     if [[ ! -f "$HANDOFF_PROMPT" ]]; then
-      echo "  cp \"$SCRIPT_DIR/prompts/handoff.example.md\" \"$HANDOFF_PROMPT\""
+      echo "  mkdir -p \"$(dirname "$HANDOFF_PROMPT")\" && cp \"$SCRIPT_DIR/skills/handoff.example.md\" \"$HANDOFF_PROMPT\""
       missing_any=1
     fi
     if [[ ! -f "$BLOCKED_PROMPT" ]]; then
-      echo "  cp \"$SCRIPT_DIR/prompts/blocked.example.md\" \"$BLOCKED_PROMPT\""
+      echo "  mkdir -p \"$(dirname "$BLOCKED_PROMPT")\" && cp \"$SCRIPT_DIR/skills/blocked.example.md\" \"$BLOCKED_PROMPT\""
       missing_any=1
     fi
     if [[ $missing_any -eq 0 ]]; then
-      echo "  (all prompt files are present)"
+      echo "  (all instruction files are present)"
     fi
     echo ""
-    echo "Then edit the prompt to reference your project's documentation."
+    echo "Then edit the skill to reference your project's documentation."
     exit 1
   fi
 

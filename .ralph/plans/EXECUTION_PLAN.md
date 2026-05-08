@@ -2,15 +2,25 @@
 
 ## Current Audit
 
-The specification is not implemented yet. The repository is still in the legacy prompt-first state described by the spec:
+The foundational init/runtime slice has been implemented under `ralph-8qx`:
 
-- Runtime templates live in top-level `prompts/*.example*.md`; there is no top-level `skills/` template directory.
-- This repo's active planning prompts live in `.ralph/prompts/*.md`; there is no `.ralph/skills/<phase>/SKILL.md` tree.
-- `.claude/commands/*.md` and `.codex/commands/*.md` are tracked symlinks to `.ralph/prompts/*.md`; `.agents/skills/` is absent.
-- `init` creates `.ralph/prompts/`, copies from `prompts/`, and exposes assistant skills by symlinking each generated `SKILL.md` back to `.ralph/prompts/<phase>.md`.
-- `start` hardcodes `.ralph/prompts/<phase>.md` paths, uses top-level `prompts/prepare.example*.md` for freestyle fallback, and prints missing-prompt guidance for the prompt layout.
+- Runtime templates now live in top-level `skills/*.example*.md`; top-level `prompts/` has been removed.
+- This repo's active planning instructions now live in `.ralph/skills/<phase>/SKILL.md` with skill frontmatter.
+- `.agents/skills/<phase>`, `.claude/skills/<phase>`, and `.codex/skills/<phase>` are Ralph-managed directory symlinks to `../../.ralph/skills/<phase>`.
+- `init` creates `.ralph/skills/<phase>/SKILL.md`, preserves existing skill files, selects beads variants from `skills/`, and creates assistant directory symlinks rather than symlinked `SKILL.md` files.
+- `start` resolves `.ralph/skills/<phase>/SKILL.md` first, falls back to existing legacy `.ralph/prompts/<phase>.md` files only when `.ralph/skills/` is absent, strips frontmatter, and uses bundled `skills/prepare.example*.md` for freestyle fallback.
 - `upgrade` only handles V1 `ralph/` projects, rejects any existing `.ralph/`, migrates prompts into `.ralph/prompts/`, and rewrites legacy command symlinks to `.ralph/prompts/`.
-- Docs and tests still describe `.ralph/prompts/` as the current layout.
+- Docs and tests are partially updated for the init/runtime slice. Upgrade docs/tests still need the full migration-state rewrite.
+
+Verification evidence for `ralph-8qx` on 2026-05-08:
+
+- `bash tests/test_init_v2.sh` -> PASS
+- `bash tests/test_phase8_runtime_validation.sh` -> PASS
+- `bash tests/test_runtime_root_enforcement.sh` -> PASS
+- `bash tests/test_cli_dispatch.sh` -> PASS
+- `bash tests/test_config_precedence.sh` -> PASS
+- `bash tests/test_install_v2.sh` -> PASS
+- `bash tests/test_upgrade_v2.sh` -> PASS
 
 Active beads context: `ralph-fiq` is in progress and matches this spec. Open side issues `ralph-azu` and `ralph-605` are unrelated to this refactor unless their touched tests/docs overlap during implementation.
 
@@ -20,32 +30,38 @@ Work in small, testable slices. Keep migration helpers conservative: only remove
 
 ## Phase 1: Template And Repository Layout
 
-1. Move bundled template files from `prompts/` to `skills/` with the same `.example` and `.example.beads` names.
-2. Replace this repo's `.ralph/prompts/<phase>.md` files with `.ralph/skills/<phase>/SKILL.md`.
-3. Replace checked-in `.claude/commands/<phase>.md` and `.codex/commands/<phase>.md` symlinks with `.claude/skills/<phase>` and `.codex/skills/<phase>` directory symlinks to `../../.ralph/skills/<phase>`.
-4. Add `.agents/skills/<phase>` directory symlinks to `../../.ralph/skills/<phase>`.
-5. Verify there are no Ralph-managed assistant integration paths that rely on symlinked `SKILL.md` files.
+Status: complete in `ralph-8qx`.
+
+1. Move bundled template files from `prompts/` to `skills/` with the same `.example` and `.example.beads` names. Done.
+2. Replace this repo's `.ralph/prompts/<phase>.md` files with `.ralph/skills/<phase>/SKILL.md`. Done.
+3. Replace checked-in `.claude/commands/<phase>.md` and `.codex/commands/<phase>.md` symlinks with `.claude/skills/<phase>` and `.codex/skills/<phase>` directory symlinks to `../../.ralph/skills/<phase>`. Done.
+4. Add `.agents/skills/<phase>` directory symlinks to `../../.ralph/skills/<phase>`. Done.
+5. Verify there are no Ralph-managed assistant integration paths that rely on symlinked `SKILL.md` files. Done for the repository layout created by this slice.
 
 ## Phase 2: `ralph init`
 
-1. Rename `copy_prompt_templates` around the new skill model and create `.ralph/skills/<phase>/SKILL.md` from `skills/<phase>.example*.md`.
-2. Stop creating `.ralph/prompts/` for new projects.
-3. Preserve existing `.ralph/skills/<phase>/SKILL.md` files without overwriting them.
-4. Change assistant setup to create directory symlinks at `.agents/skills/<phase>`, `.claude/skills/<phase>`, and `.codex/skills/<phase>` targeting `../../.ralph/skills/<phase>`.
-5. Keep `.agents/skills/<phase>` creation idempotent when both `--claude` and `--codex` are used.
-6. Preserve existing `--stealth` behavior: only add top-level folders created by the current init run.
-7. Update help text and status messages from prompt terminology to skills terminology where user-facing.
+Status: complete in `ralph-8qx`.
+
+1. Rename `copy_prompt_templates` around the new skill model and create `.ralph/skills/<phase>/SKILL.md` from `skills/<phase>.example*.md`. Done.
+2. Stop creating `.ralph/prompts/` for new projects. Done.
+3. Preserve existing `.ralph/skills/<phase>/SKILL.md` files without overwriting them. Done.
+4. Change assistant setup to create directory symlinks at `.agents/skills/<phase>`, `.claude/skills/<phase>`, and `.codex/skills/<phase>` targeting `../../.ralph/skills/<phase>`. Done.
+5. Keep `.agents/skills/<phase>` creation idempotent when both `--claude` and `--codex` are used. Done.
+6. Preserve existing `--stealth` behavior: only add top-level folders created by the current init run. Done and covered by `test_init_v2.sh`.
+7. Update help text and status messages from prompt terminology to skills terminology where user-facing. Done for `init`.
 
 ## Phase 3: Runtime Resolver In `start`
 
-1. Add a phase-to-instruction resolver that returns `.ralph/skills/<phase>/SKILL.md` when `.ralph/skills/` exists.
-2. Support legacy `.ralph/prompts/<phase>.md` only when `.ralph/skills/` is absent and `.ralph/prompts/` exists.
-3. Emit upgrade guidance whenever legacy prompt fallback is used.
-4. Ensure skills win if both `.ralph/skills/` and `.ralph/prompts/` exist.
-5. Update missing-file guidance to reference `.ralph/skills/<phase>/SKILL.md` and bundled `skills/*.example*.md`.
-6. Keep frontmatter stripping behavior unchanged for both skill files and legacy prompts.
-7. Change freestyle fallback to prefer `skills/prepare.example.beads.md`, then `skills/prepare.example.md`.
-8. Update handoff prompt lookup to use the same resolver rather than the old hardcoded path.
+Status: complete in `ralph-8qx`; broader runtime tests pass.
+
+1. Add a phase-to-instruction resolver that returns `.ralph/skills/<phase>/SKILL.md` when `.ralph/skills/` exists. Done.
+2. Support legacy `.ralph/prompts/<phase>.md` only when `.ralph/skills/` is absent and `.ralph/prompts/` exists. Done.
+3. Emit upgrade guidance whenever legacy prompt fallback is used. Done.
+4. Ensure skills win if both `.ralph/skills/` and `.ralph/prompts/` exist. Done.
+5. Update missing-file guidance to reference `.ralph/skills/<phase>/SKILL.md` and bundled `skills/*.example*.md`. Done.
+6. Keep frontmatter stripping behavior unchanged for both skill files and legacy prompts. Done.
+7. Change freestyle fallback to prefer `skills/prepare.example.beads.md`, then `skills/prepare.example.md`. Done.
+8. Update handoff prompt lookup to use the same resolver rather than the old hardcoded path. Done.
 
 ## Phase 4: `ralph upgrade`
 

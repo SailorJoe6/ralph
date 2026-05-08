@@ -187,16 +187,16 @@ assert_contains "$BLOCKED_NESTED_CLAUDE" "claude:" "blocked nested uses Claude b
 assert_contains "$BLOCKED_NESTED_CLAUDE" "[BLOCKED_PROMPT_TEXT]" "blocked nested uses blocked prompt"
 assert_not_contains "$BLOCKED_NESTED_CLAUDE" "[name: blocked]" "blocked flow strips frontmatter"
 
-# Case 2: missing active prompt shows template-copy guidance.
+# Case 2: missing active instruction shows skill template-copy guidance.
 HOME1="$TMP_ROOT/home-missing-prompt"
 PROJECT1="$TMP_ROOT/project-missing-prompt"
 mkdir -p "$HOME1" "$PROJECT1/.ralph/prompts"
 
 run_start "$PROJECT1" "$HOME1" "" "$START_BIN"
 assert_eq "$RUN_STATUS" "1" "missing prompt exit status"
-assert_contains "$RUN_STDOUT$RUN_STDERR" "Prompt file not found: $PROJECT1/.ralph/prompts/prepare.md" "missing prompt path"
-assert_contains "$RUN_STDOUT$RUN_STDERR" "/prompts/prepare.example.md" "missing prompt prepare template guidance"
-assert_contains "$RUN_STDOUT$RUN_STDERR" "$PROJECT1/.ralph/prompts/prepare.md" "missing prompt destination guidance"
+assert_contains "$RUN_STDOUT$RUN_STDERR" "Instruction file not found: $PROJECT1/.ralph/skills/prepare/SKILL.md" "missing instruction path"
+assert_contains "$RUN_STDOUT$RUN_STDERR" "/skills/prepare.example.md" "missing prepare skill template guidance"
+assert_contains "$RUN_STDOUT$RUN_STDERR" "$PROJECT1/.ralph/skills/prepare/SKILL.md" "missing skill destination guidance"
 
 # Case 3: unattended execute mode writes logs to .ralph/logs.
 HOME2="$TMP_ROOT/home-unattended"

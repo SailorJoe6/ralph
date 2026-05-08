@@ -24,9 +24,9 @@ Initialize Ralph in a project using the V2 `.ralph/` layout.
 Options:
   --project <path>  Initialize the target project path (defaults to current directory)
   --stealth         Add folders created by this run to .git/info/exclude
-  --codex           Set up Codex-compatible skill entrypoints for Ralph prompts
-  --beads           Run `bd init` and use .example.beads.md prompt templates when available
-  --claude          Set up Claude-compatible skill entrypoints for Ralph prompts
+  --codex           Set up Codex-compatible skill directory entrypoints
+  --beads           Run `bd init` and use .example.beads.md skill templates when available
+  --claude          Set up Claude-compatible skill directory entrypoints
   -y, --yolo        Accepted for compatibility; has no effect in deterministic init
   -h, --help        Show this help message
 
@@ -67,39 +67,55 @@ ensure_top_level_dir() {
   fi
 }
 
-copy_prompt_templates() {
-  local prompt_name=""
+copy_skill_templates() {
+  local skill_name=""
   local template_path=""
-  local prompt_dest=""
+  local skill_dest=""
 
-  for prompt_name in design plan execute handoff prepare blocked; do
-    template_path="$SCRIPT_DIR/prompts/${prompt_name}.example.md"
-    if [[ "$USE_BEADS" == "1" ]] && [[ -f "$SCRIPT_DIR/prompts/${prompt_name}.example.beads.md" ]]; then
-      template_path="$SCRIPT_DIR/prompts/${prompt_name}.example.beads.md"
+  for skill_name in design plan execute handoff prepare blocked; do
+    template_path="$SCRIPT_DIR/skills/${skill_name}.example.md"
+    if [[ "$USE_BEADS" == "1" ]] && [[ -f "$SCRIPT_DIR/skills/${skill_name}.example.beads.md" ]]; then
+      template_path="$SCRIPT_DIR/skills/${skill_name}.example.beads.md"
     fi
 
-    prompt_dest="$PROJECT_ROOT/.ralph/prompts/${prompt_name}.md"
-    if [[ -e "$prompt_dest" ]]; then
+    skill_dest="$PROJECT_ROOT/.ralph/skills/${skill_name}/SKILL.md"
+    if [[ -e "$skill_dest" ]]; then
       continue
     fi
-    cp "$template_path" "$prompt_dest"
+    mkdir -p "$(dirname "$skill_dest")"
+    cp "$template_path" "$skill_dest"
   done
 }
 
 setup_skill_entrypoints() {
   local tool_dir="$1"
-  local rel_prompt_prefix="../../../.ralph/prompts"
+  local rel_skill_prefix="../../.ralph/skills"
   local skills_dir="$PROJECT_ROOT/$tool_dir/skills"
-  local prompt_name=""
-  local skill_dir=""
+  local skill_name=""
+  local skill_link=""
+  local expected_target=""
 
   ensure_top_level_dir "$tool_dir"
   mkdir -p "$skills_dir"
 
-  for prompt_name in design plan execute handoff prepare blocked; do
-    skill_dir="$skills_dir/$prompt_name"
-    mkdir -p "$skill_dir"
-    ln -sf "$rel_prompt_prefix/${prompt_name}.md" "$skill_dir/SKILL.md"
+  for skill_name in design plan execute handoff prepare blocked; do
+    skill_link="$skills_dir/$skill_name"
+    expected_target="$rel_skill_prefix/$skill_name"
+
+    if [[ -L "$skill_link" ]]; then
+      if [[ "$(readlink "$skill_link")" == "$expected_target" ]]; then
+        continue
+      fi
+      warn "Preserving existing custom skill symlink: $skill_link"
+      continue
+    fi
+
+    if [[ -e "$skill_link" ]]; then
+      warn "Preserving existing custom skill entry: $skill_link"
+      continue
+    fi
+
+    ln -s "$expected_target" "$skill_link"
   done
 }
 
@@ -228,10 +244,10 @@ if [[ "$YOLO" == "1" ]]; then
 fi
 
 ensure_top_level_dir ".ralph"
-mkdir -p "$PROJECT_ROOT/.ralph/prompts" "$PROJECT_ROOT/.ralph/plans" "$PROJECT_ROOT/.ralph/logs"
+mkdir -p "$PROJECT_ROOT/.ralph/skills" "$PROJECT_ROOT/.ralph/plans" "$PROJECT_ROOT/.ralph/logs"
 
 cp "$SCRIPT_DIR/.env.example" "$PROJECT_ROOT/.ralph/.env.example"
-copy_prompt_templates
+copy_skill_templates
 
 if [[ "$USE_BEADS" == "1" ]]; then
   run_beads_init

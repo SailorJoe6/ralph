@@ -1,1 +1,0 @@
-../../.ralph/prompts/execute.md

@@ -1,3 +1,8 @@
+---
+name: execute
+description: Use for Ralph's execute phase to implement one plan task, keep beads/plans current, and hand off cleanly.
+---
+
 Study the following files in order to understand the project:
 
 1. **[README.md](README.md)** - Project overview, features, and configuration

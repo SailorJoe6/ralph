@@ -54,29 +54,29 @@ ralph init --claude --beads
 ralph init --stealth --claude --codex --beads
 ```
 
-## Prompt Customization (Required)
+## Skill Customization (Required)
 
-**IMPORTANT:** Prompts are project-specific and must be customized for your project before using ralph.
+**IMPORTANT:** Ralph skill instructions are project-specific and must be customized for your project before using ralph.
 
-Recommended setup is to run [ralph init](ralph/docs/init.md) from your project root. It deterministically creates the V2 `.ralph` layout, copies prompt templates, optionally runs beads setup, and can scaffold assistant skills that point at those prompts:
+Recommended setup is to run [ralph init](ralph/docs/init.md) from your project root. It deterministically creates the V2 `.ralph` layout, copies skill templates, optionally runs beads setup, and can scaffold assistant skill directory symlinks:
 
-Then customize the generated prompts for your project.
+Then customize the generated skills for your project.
 
 Manual alternative (without `ralph init`):
 
 ```bash
-mkdir -p .ralph/prompts
+mkdir -p .ralph/skills/{design,plan,execute,handoff,prepare,blocked}
 
-# Copy example prompts from the installed runtime
+# Copy example skills from the installed runtime
 # (use .example.beads.md where available, otherwise use .example.md)
-cp ~/.local/share/ralph/prompts/design.example.md .ralph/prompts/design.md
-cp ~/.local/share/ralph/prompts/plan.example.md .ralph/prompts/plan.md
-cp ~/.local/share/ralph/prompts/execute.example.beads.md .ralph/prompts/execute.md
-cp ~/.local/share/ralph/prompts/handoff.example.beads.md .ralph/prompts/handoff.md
-cp ~/.local/share/ralph/prompts/prepare.example.beads.md .ralph/prompts/prepare.md
-cp ~/.local/share/ralph/prompts/blocked.example.md .ralph/prompts/blocked.md
+cp ~/.local/share/ralph/skills/design.example.md .ralph/skills/design/SKILL.md
+cp ~/.local/share/ralph/skills/plan.example.md .ralph/skills/plan/SKILL.md
+cp ~/.local/share/ralph/skills/execute.example.beads.md .ralph/skills/execute/SKILL.md
+cp ~/.local/share/ralph/skills/handoff.example.beads.md .ralph/skills/handoff/SKILL.md
+cp ~/.local/share/ralph/skills/prepare.example.beads.md .ralph/skills/prepare/SKILL.md
+cp ~/.local/share/ralph/skills/blocked.example.md .ralph/skills/blocked/SKILL.md
 
-# Edit each prompt to reference your project's specific documentation
+# Edit each skill to reference your project's specific documentation
 # For example, update file paths, project names, and workflow instructions
 ```
 
@@ -190,12 +190,12 @@ If none are set, ralph uses `/<basename>` as the default.
 
 ## Integration with AI Assistants (Optional)
 
-`ralph init --claude` and `ralph init --codex` now scaffold skills instead of custom slash commands. Ralph keeps `.ralph/prompts/*.md` as the source of truth, adds Agent Skills-compatible frontmatter to those prompts, and creates skill entrypoints that point back to them:
+`ralph init --claude` and `ralph init --codex` scaffold skills instead of custom slash commands. Ralph keeps `.ralph/skills/<phase>/SKILL.md` as the source of truth and creates assistant skill directories that symlink back to those Ralph-managed directories:
 
 ```text
-.agents/skills/<phase>/SKILL.md
-.claude/skills/<phase>/SKILL.md
-.codex/skills/<phase>/SKILL.md
+.agents/skills/<phase> -> ../../.ralph/skills/<phase>
+.claude/skills/<phase> -> ../../.ralph/skills/<phase>
+.codex/skills/<phase> -> ../../.ralph/skills/<phase>
 ```
 
 The shared `.agents/skills/` tree follows the open Agent Skills layout used by tools such as Cursor. Native `.claude/skills/` and `.codex/skills/` entrypoints are generated only when you request them with the matching flags.
@@ -289,7 +289,7 @@ ralph --freestyle
 **Restrictions:**
 - If you pass both `--freestyle` and `--unattended`, Ralph normalizes to interactive freestyle with yolo permissions.
 - Freestyle skips project-root enforcement and resolves `.ralph/...` paths from the current directory
-- Must have `.ralph/prompts/prepare.md` available in the current directory
+- Uses `.ralph/skills/prepare/SKILL.md` when available, with bundled `skills/prepare.example*.md` fallback
 - Still supports `--codex`, `--container`, and `--workdir` options
 
 ### Handoff Phase
@@ -326,7 +326,7 @@ If the AI completes all work and deletes the planning documents as instructed in
 
 V2 project scaffolding from `ralph init` is created under `.ralph/`:
 
-- `.ralph/prompts/`
+- `.ralph/skills/`
 - `.ralph/plans/`
 - `.ralph/logs/`
 - `.ralph/.env.example`

@@ -30,7 +30,7 @@ Runtime mode requires a V2 project root for the standard design -> plan -> execu
 **Key Project Paths**
 - Project-root marker: `<project_root>/.ralph/`
 - Project-specific configuration: `<project_root>/.ralph/.env`
-- Runtime prompt lookup: `<project_root>/.ralph/prompts/`
+- Runtime skill lookup: `<project_root>/.ralph/skills/<phase>/SKILL.md`
 - Planning docs (default): `<project_root>/.ralph/plans/`
 - Logs (default): `<project_root>/.ralph/logs/`
 

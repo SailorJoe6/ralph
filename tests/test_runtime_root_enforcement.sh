@@ -139,6 +139,6 @@ run_start "$FREESTYLE_CWD" "$FREESTYLE_HOME" --freestyle
 [[ "$RUN_STATUS" == "1" ]] || { echo "Expected freestyle no-root run to exit 1 (missing prepare prompt)" >&2; exit 1; }
 assert_not_contains "$RUN_STDERR" "Ralph runtime requires a V2 project root" "freestyle bypasses no-root preflight"
 assert_not_contains "$RUN_STDERR" "Ralph must be run from the project root directory." "freestyle bypasses ancestor-root preflight"
-assert_contains "$RUN_STDOUT$RUN_STDERR" "Warning: $FREESTYLE_CWD/.ralph/prompts/prepare.md not found; using bundled freestyle prompt:" "freestyle no-root falls back to bundled prepare prompt"
+assert_contains "$RUN_STDOUT$RUN_STDERR" "Warning: $FREESTYLE_CWD/.ralph/skills/prepare/SKILL.md not found; using bundled freestyle prompt:" "freestyle no-root falls back to bundled prepare prompt"
 
 echo "test_runtime_root_enforcement.sh: PASS"

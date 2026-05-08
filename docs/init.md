@@ -12,7 +12,7 @@ ralph init [OPTIONS]
 - `--stealth` Add folders created by this init run to `<project_root>/.git/info/exclude`.
 - `--codex` Set up Codex-compatible skill entrypoints under `.codex/skills/` plus shared open-standard skills under `.agents/skills/`.
 - `--claude` Set up Claude-compatible skill entrypoints under `.claude/skills/` plus shared open-standard skills under `.agents/skills/`.
-- `--beads` Run `bd init` in the target project root and use `.example.beads.md` prompt templates when available.
+- `--beads` Run `bd init` in the target project root and use `.example.beads.md` skill templates when available.
 - `-h, --help` Show help.
 
 **Default Target**
@@ -21,17 +21,17 @@ ralph init [OPTIONS]
 **Tasks Performed**
 - Create V2 directories (idempotent):
   - `<project_root>/.ralph`
-  - `<project_root>/.ralph/prompts`
+  - `<project_root>/.ralph/skills`
   - `<project_root>/.ralph/plans`
   - `<project_root>/.ralph/logs`
-- Create active prompt files in `<project_root>/.ralph/prompts/` from bundled templates, preserving any pre-existing active prompt files.
-- The generated prompt files include Agent Skills-compatible frontmatter so the same prompt text can be exposed as a valid `SKILL.md`.
+- Create active skill files in `<project_root>/.ralph/skills/<phase>/SKILL.md` from bundled templates, preserving any pre-existing active skill files.
+- The generated skill files include Agent Skills-compatible frontmatter. Runtime strips that frontmatter before sending instructions to Claude or Codex.
 - Copy the bundled runtime `.env.example` to `<project_root>/.ralph/.env.example` (always overwrite with latest example file).
 - With `--beads`, run `bd init` when `.beads/` does not already exist and select `.example.beads.md` variants when they exist (`execute`, `handoff`, `prepare`), falling back to `.example.md` otherwise.
-- With `--claude` and/or `--codex`, create skill folders whose `SKILL.md` entrypoints symlink back to `.ralph` prompt files.
+- With `--claude` and/or `--codex`, create assistant skill directory symlinks to `.ralph/skills/<phase>`.
 - When either assistant flag is used, also create shared open-standard skills under `<project_root>/.agents/skills/` for Agent Skills and Cursor compatibility.
 
-Note: The default prompts reference planning paths under `.ralph/plans/...` so if you change this via [configuration](configuration.md), be sure to update the prompts!
+Note: The default skills reference planning paths under `.ralph/plans/...` so if you change this via [configuration](configuration.md), be sure to update the skills!
 
 
 **Stealth Mode Details**

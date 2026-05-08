@@ -1,3 +1,8 @@
+---
+name: prepare
+description: Use for Ralph's free-form preparation phase when planning docs are not ready yet.
+---
+
 Study the following files in order to understand the project:
 
 1. **[README.md](README.md)** - Project overview, features, and configuration

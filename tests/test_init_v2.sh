@@ -21,6 +21,16 @@ assert_exists() {
   fi
 }
 
+assert_not_exists() {
+  local path="$1"
+  local label="$2"
+  if [[ -e "$path" || -L "$path" ]]; then
+    echo "Assertion failed: $label" >&2
+    echo "Unexpected path: $path" >&2
+    exit 1
+  fi
+}
+
 assert_dir() {
   local path="$1"
   local label="$2"
@@ -115,27 +125,28 @@ RUN_STDERR=""
 TMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TMP_ROOT"' EXIT
 
-# Case 1: empty directory init creates V2 tree and default prompts.
+# Case 1: empty directory init creates V2 tree and default skills.
 PROJECT1="$TMP_ROOT/project-empty"
 run_cmd "$RALPH_BIN" init --project "$PROJECT1"
 assert_eq "$RUN_STATUS" "0" "init empty dir exit status"
 assert_dir "$PROJECT1/.ralph" "init creates .ralph"
-assert_dir "$PROJECT1/.ralph/prompts" "init creates prompts dir"
+assert_dir "$PROJECT1/.ralph/skills" "init creates skills dir"
+assert_not_exists "$PROJECT1/.ralph/prompts" "init does not create legacy prompts dir"
 assert_dir "$PROJECT1/.ralph/plans" "init creates plans dir"
 assert_dir "$PROJECT1/.ralph/logs" "init creates logs dir"
 assert_file_equals "$RALPH_DIR/.env.example" "$PROJECT1/.ralph/.env.example" "init overwrites .env.example from bundled template"
-assert_file_equals "$RALPH_DIR/prompts/execute.example.md" "$PROJECT1/.ralph/prompts/execute.md" "default execute template"
-assert_file_equals "$RALPH_DIR/prompts/handoff.example.md" "$PROJECT1/.ralph/prompts/handoff.md" "default handoff template"
-assert_file_equals "$RALPH_DIR/prompts/prepare.example.md" "$PROJECT1/.ralph/prompts/prepare.md" "default prepare template"
+assert_file_equals "$RALPH_DIR/skills/execute.example.md" "$PROJECT1/.ralph/skills/execute/SKILL.md" "default execute template"
+assert_file_equals "$RALPH_DIR/skills/handoff.example.md" "$PROJECT1/.ralph/skills/handoff/SKILL.md" "default handoff template"
+assert_file_equals "$RALPH_DIR/skills/prepare.example.md" "$PROJECT1/.ralph/skills/prepare/SKILL.md" "default prepare template"
 
-# Case 2: existing active prompt is preserved; .env.example is always overwritten.
+# Case 2: existing active skill is preserved; .env.example is always overwritten.
 PROJECT2="$TMP_ROOT/project-existing"
-mkdir -p "$PROJECT2/.ralph/prompts"
-printf 'KEEP PLAN CONTENT\n' > "$PROJECT2/.ralph/prompts/plan.md"
+mkdir -p "$PROJECT2/.ralph/skills/plan"
+printf 'KEEP PLAN CONTENT\n' > "$PROJECT2/.ralph/skills/plan/SKILL.md"
 printf 'OLD ENV CONTENT\n' > "$PROJECT2/.ralph/.env.example"
 run_cmd "$RALPH_BIN" init --project "$PROJECT2"
 assert_eq "$RUN_STATUS" "0" "init existing dir exit status"
-assert_eq "$(cat "$PROJECT2/.ralph/prompts/plan.md")" "KEEP PLAN CONTENT" "existing prompt preserved"
+assert_eq "$(cat "$PROJECT2/.ralph/skills/plan/SKILL.md")" "KEEP PLAN CONTENT" "existing skill preserved"
 assert_file_equals "$RALPH_DIR/.env.example" "$PROJECT2/.ralph/.env.example" ".env.example overwritten"
 
 # Case 3: --project relative missing path is created.
@@ -146,7 +157,7 @@ assert_file_equals "$RALPH_DIR/.env.example" "$PROJECT2/.ralph/.env.example" ".e
 assert_eq "$RUN_STATUS" "0" "init --project missing path exit status"
 assert_dir "$TMP_ROOT/project-created/.ralph" "init creates resolved --project root"
 
-# Case 4: --beads runs bd init and uses beads prompt variants when available.
+# Case 4: --beads runs bd init and uses beads skill variants when available.
 PROJECT3="$TMP_ROOT/project-beads"
 FAKE_BIN="$TMP_ROOT/fake-bin"
 BD_LOG="$TMP_ROOT/bd.log"
@@ -168,17 +179,17 @@ run_cmd env PATH="$FAKE_BIN:$PATH" BD_LOG="$BD_LOG" "$RALPH_BIN" init --project 
 assert_eq "$RUN_STATUS" "0" "init --beads exit status"
 assert_dir "$PROJECT3/.beads" "beads init creates .beads"
 assert_contains "$(cat "$BD_LOG")" "bd init $PROJECT3" "bd init invoked in project root"
-assert_file_equals "$RALPH_DIR/prompts/execute.example.beads.md" "$PROJECT3/.ralph/prompts/execute.md" "beads execute template"
-assert_file_equals "$RALPH_DIR/prompts/handoff.example.beads.md" "$PROJECT3/.ralph/prompts/handoff.md" "beads handoff template"
-assert_file_equals "$RALPH_DIR/prompts/prepare.example.beads.md" "$PROJECT3/.ralph/prompts/prepare.md" "beads prepare template"
-assert_file_equals "$RALPH_DIR/prompts/blocked.example.md" "$PROJECT3/.ralph/prompts/blocked.md" "blocked fallback template"
+assert_file_equals "$RALPH_DIR/skills/execute.example.beads.md" "$PROJECT3/.ralph/skills/execute/SKILL.md" "beads execute template"
+assert_file_equals "$RALPH_DIR/skills/handoff.example.beads.md" "$PROJECT3/.ralph/skills/handoff/SKILL.md" "beads handoff template"
+assert_file_equals "$RALPH_DIR/skills/prepare.example.beads.md" "$PROJECT3/.ralph/skills/prepare/SKILL.md" "beads prepare template"
+assert_file_equals "$RALPH_DIR/skills/blocked.example.md" "$PROJECT3/.ralph/skills/blocked/SKILL.md" "blocked fallback template"
 
 # Re-run with existing .beads should remain successful and skip repeated bd init.
 run_cmd env PATH="$FAKE_BIN:$PATH" BD_LOG="$BD_LOG" "$RALPH_BIN" init --project "$PROJECT3" --beads
 assert_eq "$RUN_STATUS" "0" "re-run init --beads exit status"
 assert_eq "$(wc -l < "$BD_LOG" | tr -d '[:space:]')" "1" "bd init not repeated when .beads already exists"
 
-# Case 5: --stealth excludes only newly created folders and skill setup targets .ralph prompts.
+# Case 5: --stealth excludes only newly created folders and skill setup targets .ralph skill directories.
 PROJECT4="$TMP_ROOT/project-stealth"
 mkdir -p "$PROJECT4"
 (
@@ -195,10 +206,10 @@ assert_contains "$EXCLUDE_CONTENT" ".agents/" "exclude includes .agents"
 assert_contains "$EXCLUDE_CONTENT" ".claude/" "exclude includes .claude"
 assert_contains "$EXCLUDE_CONTENT" ".codex/" "exclude includes .codex"
 assert_not_contains "$EXCLUDE_CONTENT" ".beads/" "exclude omits .beads when not created"
-assert_symlink_target "$PROJECT4/.agents/skills/design/SKILL.md" "../../../.ralph/prompts/design.md" "shared design skill symlink target"
-assert_symlink_target "$PROJECT4/.agents/skills/blocked/SKILL.md" "../../../.ralph/prompts/blocked.md" "shared blocked skill symlink target"
-assert_symlink_target "$PROJECT4/.claude/skills/design/SKILL.md" "../../../.ralph/prompts/design.md" "claude skill symlink target"
-assert_symlink_target "$PROJECT4/.codex/skills/prepare/SKILL.md" "../../../.ralph/prompts/prepare.md" "codex skill symlink target"
+assert_symlink_target "$PROJECT4/.agents/skills/design" "../../.ralph/skills/design" "shared design skill symlink target"
+assert_symlink_target "$PROJECT4/.agents/skills/blocked" "../../.ralph/skills/blocked" "shared blocked skill symlink target"
+assert_symlink_target "$PROJECT4/.claude/skills/design" "../../.ralph/skills/design" "claude skill symlink target"
+assert_symlink_target "$PROJECT4/.codex/skills/prepare" "../../.ralph/skills/prepare" "codex skill symlink target"
 
 # Re-run should not duplicate exclude entries.
 run_cmd "$RALPH_BIN" init --project "$PROJECT4" --stealth --claude --codex
