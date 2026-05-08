@@ -43,6 +43,18 @@ assert_not_exists() {
   fi
 }
 
+assert_file_contains() {
+  local path="$1"
+  local needle="$2"
+  local label="$3"
+  if [[ ! -f "$path" ]]; then
+    echo "Assertion failed: $label" >&2
+    echo "Missing file: $path" >&2
+    exit 1
+  fi
+  assert_contains "$(cat "$path")" "$needle" "$label"
+}
+
 assert_contains() {
   local haystack="$1"
   local needle="$2"
@@ -132,7 +144,9 @@ run_cmd "$RALPH_BIN" upgrade --project "$PROJECT1"
 assert_eq "$RUN_STATUS" "0" "clean migration exit status"
 assert_exists "$PROJECT1/.ralph/.env" "migrated .env created"
 assert_exists "$PROJECT1/.ralph/.env.example" "migrated .env.example copied"
-assert_exists "$PROJECT1/.ralph/prompts/design.md" "design prompt migrated"
+assert_exists "$PROJECT1/.ralph/skills/design/SKILL.md" "design prompt migrated to skill"
+assert_file_contains "$PROJECT1/.ralph/skills/design/SKILL.md" "design prompt" "design skill content preserved"
+assert_not_exists "$PROJECT1/.ralph/prompts" "legacy prompts directory not created"
 assert_exists "$PROJECT1/.ralph/plans/SPECIFICATION.md" "spec migrated"
 assert_exists "$PROJECT1/.ralph/plans/EXECUTION_PLAN.md" "plan migrated"
 assert_exists "$PROJECT1/.ralph/plans/archive/old.md" "archive plans migrated recursively"
@@ -149,9 +163,9 @@ PROJECT2="$TMP_ROOT/project-no-legacy"
 mkdir -p "$PROJECT2"
 run_cmd "$RALPH_BIN" upgrade --project "$PROJECT2"
 assert_eq "$RUN_STATUS" "1" "missing legacy precondition exit status"
-assert_contains "$RUN_STDERR" "legacy V1 Ralph folder not found" "missing legacy error"
+assert_contains "$RUN_STDERR" "no upgradeable Ralph layout found" "missing legacy error"
 
-# Case 3: precondition failure when .ralph already exists.
+# Case 3: precondition failure when no upgradeable V2 prompt layout exists.
 PROJECT3="$TMP_ROOT/project-existing-v2"
 mkdir -p "$PROJECT3/ralph" "$PROJECT3/.ralph"
 run_cmd "$RALPH_BIN" upgrade --project "$PROJECT3"
@@ -194,7 +208,7 @@ printf 'design prompt\n' > "$PROJECT5/ralph/prompts/design.md"
 printf 'keep legacy file\n' > "$PROJECT5/ralph/notes.txt"
 run_cmd "$RALPH_BIN" upgrade --project "$PROJECT5"
 assert_eq "$RUN_STATUS" "1" "unknown content without git repo exit status"
-assert_exists "$PROJECT5/.ralph/prompts/design.md" "known prompt still migrated before cleanup error"
+assert_exists "$PROJECT5/.ralph/skills/design/SKILL.md" "known prompt still migrated before cleanup error"
 assert_exists "$PROJECT5/ralph" "legacy directory retained when cleanup safety check fails"
 assert_exists "$PROJECT5/ralph/notes.txt" "unknown legacy content preserved"
 assert_contains "$RUN_STDERR" "Cannot remove legacy directory" "unknown-content cleanup error emitted"
@@ -246,7 +260,7 @@ printf 'placeholder\n' > "$PROJECT9/ralph/logs/.keep"
 
 run_cmd "$RALPH_BIN" upgrade --project "$PROJECT9"
 assert_eq "$RUN_STATUS" "0" "placeholder cleanup migration exit status"
-assert_exists "$PROJECT9/.ralph/prompts/design.md" "placeholder cleanup still migrated prompts"
+assert_exists "$PROJECT9/.ralph/skills/design/SKILL.md" "placeholder cleanup still migrated prompts"
 assert_not_exists "$PROJECT9/ralph" "legacy directory removed when only placeholder content remained"
 assert_not_contains "$RUN_STDERR" "Legacy directory retained" "placeholder files are not treated as unknown legacy content"
 
@@ -271,7 +285,7 @@ EOF_GITIGNORE
 )
 run_cmd "$RALPH_BIN" upgrade --project "$PROJECT10"
 assert_eq "$RUN_STATUS" "0" "clean legacy git repo deletion exit status"
-assert_exists "$PROJECT10/.ralph/prompts/design.md" "active prompt migrated"
+assert_exists "$PROJECT10/.ralph/skills/design/SKILL.md" "active prompt migrated"
 assert_not_exists "$PROJECT10/.ralph/prompts/design.example.md" "example prompt not migrated"
 assert_not_exists "$PROJECT10/ralph" "legacy directory removed when clean git repo had residual content"
 
@@ -299,7 +313,7 @@ assert_eq "$RUN_STATUS" "1" "dirty legacy git repo cleanup failure exit status"
 assert_exists "$PROJECT11/ralph" "legacy directory retained when git repo is dirty"
 assert_contains "$RUN_STDERR" "legacy git repository is not clean" "dirty git cleanup reason emitted"
 
-# Case 12: existing .claude/.codex command symlinks to legacy prompts are rewritten.
+# Case 12: existing .claude/.codex command symlinks to legacy prompts are migrated to skill directories.
 PROJECT12="$TMP_ROOT/project-symlink-rewrite"
 mkdir -p \
   "$PROJECT12/ralph/prompts" \
@@ -313,7 +327,58 @@ ln -s "../../ralph/prompts/plan.md" "$PROJECT12/.codex/commands/plan.md"
 run_cmd "$RALPH_BIN" upgrade --project "$PROJECT12"
 assert_eq "$RUN_STATUS" "0" "legacy prompt symlink rewrite exit status"
 assert_not_exists "$PROJECT12/ralph" "legacy directory removed after symlink rewrite migration"
-assert_symlink_target "$PROJECT12/.claude/commands/design.md" "../../.ralph/prompts/design.md" "claude design symlink rewritten"
-assert_symlink_target "$PROJECT12/.codex/commands/plan.md" "../../.ralph/prompts/plan.md" "codex plan symlink rewritten"
+assert_not_exists "$PROJECT12/.claude/commands/design.md" "claude legacy command symlink removed"
+assert_not_exists "$PROJECT12/.codex/commands/plan.md" "codex legacy command symlink removed"
+assert_symlink_target "$PROJECT12/.claude/skills/design" "../../.ralph/skills/design" "claude design skill symlink created"
+assert_symlink_target "$PROJECT12/.codex/skills/plan" "../../.ralph/skills/plan" "codex plan skill symlink created"
+assert_symlink_target "$PROJECT12/.agents/skills/design" "../../.ralph/skills/design" "shared design skill symlink created"
+assert_symlink_target "$PROJECT12/.agents/skills/plan" "../../.ralph/skills/plan" "shared plan skill symlink created"
+assert_not_exists "$PROJECT12/.claude/commands" "empty claude commands directory removed"
+assert_not_exists "$PROJECT12/.codex/commands" "empty codex commands directory removed"
+
+# Case 13: old V2 .ralph/prompts layout migrates in place to .ralph/skills.
+PROJECT13="$TMP_ROOT/project-old-v2-prompts"
+mkdir -p "$PROJECT13/.ralph/prompts" "$PROJECT13/.ralph/plans"
+printf 'prepare prompt\n' > "$PROJECT13/.ralph/prompts/prepare.md"
+run_cmd "$RALPH_BIN" upgrade --project "$PROJECT13"
+assert_eq "$RUN_STATUS" "0" "old V2 prompt migration exit status"
+assert_exists "$PROJECT13/.ralph/skills/prepare/SKILL.md" "old V2 prompt migrated to skill"
+assert_file_contains "$PROJECT13/.ralph/skills/prepare/SKILL.md" "prepare prompt" "old V2 prompt content preserved"
+assert_not_exists "$PROJECT13/.ralph/prompts" "old V2 prompts removed when empty"
+
+# Case 14: old symlinked SKILL.md assistant layout is replaced with a directory symlink.
+PROJECT14="$TMP_ROOT/project-old-skill-file-symlink"
+mkdir -p "$PROJECT14/.ralph/prompts" "$PROJECT14/.claude/skills/execute"
+printf 'execute prompt\n' > "$PROJECT14/.ralph/prompts/execute.md"
+ln -s "../../../.ralph/prompts/execute.md" "$PROJECT14/.claude/skills/execute/SKILL.md"
+run_cmd "$RALPH_BIN" upgrade --project "$PROJECT14"
+assert_eq "$RUN_STATUS" "0" "old symlinked skill migration exit status"
+assert_symlink_target "$PROJECT14/.claude/skills/execute" "../../.ralph/skills/execute" "old symlinked skill dir migrated"
+
+# Case 15: custom commands and custom skill directories are preserved.
+PROJECT15="$TMP_ROOT/project-custom-assistant-content"
+mkdir -p "$PROJECT15/.ralph/prompts" "$PROJECT15/.claude/commands" "$PROJECT15/.codex/skills/design"
+printf 'design prompt\n' > "$PROJECT15/.ralph/prompts/design.md"
+printf 'custom command\n' > "$PROJECT15/.claude/commands/custom.md"
+printf 'custom skill\n' > "$PROJECT15/.codex/skills/design/SKILL.md"
+run_cmd "$RALPH_BIN" upgrade --project "$PROJECT15"
+assert_eq "$RUN_STATUS" "0" "custom assistant preservation exit status"
+assert_exists "$PROJECT15/.claude/commands/custom.md" "custom command preserved"
+assert_exists "$PROJECT15/.codex/skills/design/SKILL.md" "custom skill directory preserved"
+
+# Case 16: --stealth records assistant folders created by command migration.
+PROJECT16="$TMP_ROOT/project-stealth-assistants"
+mkdir -p "$PROJECT16/ralph/prompts" "$PROJECT16/.claude/commands"
+printf 'design prompt\n' > "$PROJECT16/ralph/prompts/design.md"
+ln -s "../../ralph/prompts/design.md" "$PROJECT16/.claude/commands/design.md"
+(
+  cd "$PROJECT16"
+  git init -q
+)
+run_cmd "$RALPH_BIN" upgrade --project "$PROJECT16" --stealth
+assert_eq "$RUN_STATUS" "0" "assistant stealth migration exit status"
+assert_contains "$(cat "$PROJECT16/.git/info/exclude")" ".ralph/" "assistant stealth excludes .ralph"
+assert_contains "$(cat "$PROJECT16/.git/info/exclude")" ".agents/" "assistant stealth excludes newly created .agents"
+assert_not_contains "$(cat "$PROJECT16/.git/info/exclude")" ".claude/" "assistant stealth does not exclude pre-existing .claude"
 
 echo "test_upgrade_v2.sh: PASS"

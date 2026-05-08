@@ -9,7 +9,7 @@ The foundational init/runtime slice has been implemented under `ralph-8qx`:
 - `.agents/skills/<phase>`, `.claude/skills/<phase>`, and `.codex/skills/<phase>` are Ralph-managed directory symlinks to `../../.ralph/skills/<phase>`.
 - `init` creates `.ralph/skills/<phase>/SKILL.md`, preserves existing skill files, selects beads variants from `skills/`, and creates assistant directory symlinks rather than symlinked `SKILL.md` files.
 - `start` resolves `.ralph/skills/<phase>/SKILL.md` first, falls back to existing legacy `.ralph/prompts/<phase>.md` files only when `.ralph/skills/` is absent, strips frontmatter, and uses bundled `skills/prepare.example*.md` for freestyle fallback.
-- `upgrade` only handles V1 `ralph/` projects, rejects any existing `.ralph/`, migrates prompts into `.ralph/prompts/`, and rewrites legacy command symlinks to `.ralph/prompts/`.
+- `upgrade` now handles V1 `ralph/` projects and old V2 `.ralph/prompts/` projects without `.ralph/skills/`, migrates prompt bodies into `.ralph/skills/<phase>/SKILL.md`, and migrates Ralph-managed legacy command/symlinked-`SKILL.md` assistant entrypoints into skill directory symlinks.
 - Docs and tests are partially updated for the init/runtime slice. Upgrade docs/tests still need the full migration-state rewrite.
 
 Verification evidence for `ralph-8qx` on 2026-05-08:
@@ -23,6 +23,10 @@ Verification evidence for `ralph-8qx` on 2026-05-08:
 - `bash tests/test_upgrade_v2.sh` -> PASS
 
 Active beads context: `ralph-fiq` is in progress and matches this spec. Open side issues `ralph-azu` and `ralph-605` are unrelated to this refactor unless their touched tests/docs overlap during implementation.
+
+Additional verification evidence for `ralph-fiq` on 2026-05-08:
+
+- `bash tests/test_init_v2.sh && bash tests/test_phase8_runtime_validation.sh && bash tests/test_upgrade_v2.sh && bash tests/test_cli_dispatch.sh && bash tests/test_config_precedence.sh && bash tests/test_runtime_root_enforcement.sh && bash tests/test_install_v2.sh` -> PASS
 
 ## Implementation Strategy
 
@@ -65,18 +69,22 @@ Status: complete in `ralph-8qx`; broader runtime tests pass.
 
 ## Phase 4: `ralph upgrade`
 
-1. Keep existing V1 path/config/plan/log migration behavior, but migrate V1 prompts into `.ralph/skills/<phase>/SKILL.md`.
-2. Add V2 old-layout migration for projects with `.ralph/prompts/` and no `.ralph/skills/`.
-3. Stop rejecting all projects with existing `.ralph/`; reject only unsupported/conflicting states.
-4. Preserve destination skill files that already exist with different content and warn instead of overwriting.
-5. Remove `.ralph/prompts/` only when all Ralph-managed prompt files migrated and no unknown content remains.
-6. Replace old assistant layouts where `<tool>/skills/<phase>/SKILL.md` is a Ralph-managed symlink with `<tool>/skills/<phase>` directory symlinks.
-7. Migrate Ralph-managed `.claude/commands/<phase>.md` and `.codex/commands/<phase>.md` symlinks into assistant skill directory symlinks, create shared `.agents/skills/<phase>`, and remove only safe empty legacy command directories.
-8. Preserve custom skill directories, custom command files, unrelated symlinks, and non-empty command directories.
-9. Update `--stealth` to include newly created `.agents/`, `.claude/`, and `.codex/` top-level folders.
-10. Make upgrade output explicitly report migrated, preserved, skipped, and repaired items.
+Status: complete in `ralph-fiq`; full listed shell suite passes on 2026-05-08.
+
+1. Keep existing V1 path/config/plan/log migration behavior, but migrate V1 prompts into `.ralph/skills/<phase>/SKILL.md`. Done.
+2. Add V2 old-layout migration for projects with `.ralph/prompts/` and no `.ralph/skills/`. Done.
+3. Stop rejecting all projects with existing `.ralph/`; reject only unsupported/conflicting states. Done.
+4. Preserve destination skill files that already exist with different content and warn instead of overwriting. Done.
+5. Remove `.ralph/prompts/` only when all Ralph-managed prompt files migrated and no unknown content remains. Done.
+6. Replace old assistant layouts where `<tool>/skills/<phase>/SKILL.md` is a Ralph-managed symlink with `<tool>/skills/<phase>` directory symlinks. Done.
+7. Migrate Ralph-managed `.claude/commands/<phase>.md` and `.codex/commands/<phase>.md` symlinks into assistant skill directory symlinks, create shared `.agents/skills/<phase>`, and remove only safe empty legacy command directories. Done.
+8. Preserve custom skill directories, custom command files, unrelated symlinks, and non-empty command directories. Done.
+9. Update `--stealth` to include newly created `.agents/`, `.claude/`, and `.codex/` top-level folders. Done.
+10. Make upgrade output explicitly report migrated, preserved, skipped, and repaired items. Done.
 
 ## Phase 5: Documentation
+
+Status: complete. README and docs describe `.ralph/skills/<phase>/SKILL.md` as current, `skills/*.example*.md` as bundled templates, legacy `.ralph/prompts/` as runtime-compatible upgrade input, and assistant command symlinks as migration inputs.
 
 Update at least these docs after behavior is implemented:
 
@@ -90,6 +98,8 @@ Update at least these docs after behavior is implemented:
 Docs must make clear that `.ralph/skills/<name>/SKILL.md` is current, `skills/*.example*.md` is the bundled source, `.ralph/prompts/` and assistant command symlinks are legacy migration inputs, and runtime strips skill frontmatter before invoking Claude or Codex.
 
 ## Phase 6: Tests
+
+Status: complete. Full listed shell suite passes on 2026-05-08.
 
 Update and run the shell test suite:
 

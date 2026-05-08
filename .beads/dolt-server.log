@@ -1819,3 +1819,90 @@ time="2026-05-08T15:31:54Z" level=info msg=NewConnection DisableClientMultiState
 time="2026-05-08T15:31:54Z" level=info msg=ConnectionClosed connectionID=81
 time="2026-05-08T15:31:54Z" level=info msg=ConnectionClosed connectionID=79
 time="2026-05-08T15:31:54Z" level=info msg=ConnectionClosed connectionID=82
+time="2026-05-08T15:36:41Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=83
+time="2026-05-08T15:36:41Z" level=info msg=ConnectionClosed connectionID=83
+time="2026-05-08T15:36:41Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=84
+time="2026-05-08T15:36:41Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=85
+time="2026-05-08T15:36:41Z" level=info msg=ConnectionClosed connectionID=84
+time="2026-05-08T15:36:41Z" level=warning msg="error running query" connectTime="2026-05-08 15:36:41.770389313 +0000 UTC m=+1657.940280606" connectionDb=ralph connectionID=85 error="nothing to commit" queryTime="2026-05-08 15:36:41.782251175 +0000 UTC m=+1657.952142404"
+time="2026-05-08T15:36:41Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=86
+time="2026-05-08T15:36:41Z" level=info msg=ConnectionClosed connectionID=86
+time="2026-05-08T15:36:42Z" level=info msg=ConnectionClosed connectionID=85
+time="2026-05-08T15:36:49Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=87
+time="2026-05-08T15:36:49Z" level=info msg=ConnectionClosed connectionID=87
+time="2026-05-08T15:36:49Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=88
+time="2026-05-08T15:36:49Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=89
+time="2026-05-08T15:36:49Z" level=info msg=ConnectionClosed connectionID=88
+time="2026-05-08T15:36:49Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=90
+time="2026-05-08T15:36:49Z" level=info msg=ConnectionClosed connectionID=90
+time="2026-05-08T15:36:49Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=91
+time="2026-05-08T15:36:49Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=92
+time="2026-05-08T15:36:49Z" level=info msg=ConnectionClosed connectionID=91
+time="2026-05-08T15:36:49Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=93
+time="2026-05-08T15:36:49Z" level=info msg=ConnectionClosed connectionID=93
+time="2026-05-08T15:36:49Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=94
+time="2026-05-08T15:36:49Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=95
+time="2026-05-08T15:36:49Z" level=info msg=ConnectionClosed connectionID=94
+time="2026-05-08T15:36:49Z" level=info msg=ConnectionClosed connectionID=89
+time="2026-05-08T15:36:49Z" level=info msg=ConnectionClosed connectionID=92
+time="2026-05-08T15:36:49Z" level=info msg=ConnectionClosed connectionID=95
+time="2026-05-08T15:36:56Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=96
+time="2026-05-08T15:36:56Z" level=info msg=ConnectionClosed connectionID=96
+time="2026-05-08T15:36:56Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=97
+time="2026-05-08T15:36:56Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=98
+time="2026-05-08T15:36:56Z" level=info msg=ConnectionClosed connectionID=97
+time="2026-05-08T15:36:56Z" level=info msg=ConnectionClosed connectionID=98
+time="2026-05-08T15:37:12Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=99
+time="2026-05-08T15:37:12Z" level=info msg=ConnectionClosed connectionID=99
+time="2026-05-08T15:37:12Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=100
+time="2026-05-08T15:37:12Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=101
+time="2026-05-08T15:37:12Z" level=info msg=ConnectionClosed connectionID=100
+time="2026-05-08T15:37:12Z" level=warning msg="error running query" connectTime="2026-05-08 15:37:12.350222979 +0000 UTC m=+1688.520114208" connectionDb=ralph connectionID=101 error="nothing to commit" queryTime="2026-05-08 15:37:12.358567306 +0000 UTC m=+1688.528458535"
+time="2026-05-08T15:37:12Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=102
+time="2026-05-08T15:37:12Z" level=info msg=ConnectionClosed connectionID=102
+time="2026-05-08T15:37:12Z" level=info msg=ConnectionClosed connectionID=101
+time="2026-05-08T15:40:53Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=103
+time="2026-05-08T15:40:53Z" level=info msg=ConnectionClosed connectionID=103
+time="2026-05-08T15:40:53Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=104
+time="2026-05-08T15:40:53Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=105
+time="2026-05-08T15:40:53Z" level=info msg=ConnectionClosed connectionID=104
+time="2026-05-08T15:40:53Z" level=info msg=ConnectionClosed connectionID=105
+time="2026-05-08T15:41:20Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=106
+time="2026-05-08T15:41:20Z" level=info msg=ConnectionClosed connectionID=106
+time="2026-05-08T15:41:20Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=107
+time="2026-05-08T15:41:20Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=108
+time="2026-05-08T15:41:20Z" level=info msg=ConnectionClosed connectionID=107
+time="2026-05-08T15:41:20Z" level=warning msg="error running query" connectTime="2026-05-08 15:41:20.518560543 +0000 UTC m=+1936.688451772" connectionDb=ralph connectionID=108 error="nothing to commit" queryTime="2026-05-08 15:41:20.531015162 +0000 UTC m=+1936.700906407"
+time="2026-05-08T15:41:20Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=109
+time="2026-05-08T15:41:20Z" level=info msg=ConnectionClosed connectionID=109
+time="2026-05-08T15:41:20Z" level=info msg=ConnectionClosed connectionID=108
+time="2026-05-08T15:41:27Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=110
+time="2026-05-08T15:41:27Z" level=info msg=ConnectionClosed connectionID=110
+time="2026-05-08T15:41:27Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=111
+time="2026-05-08T15:41:27Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=112
+time="2026-05-08T15:41:27Z" level=info msg=ConnectionClosed connectionID=111
+time="2026-05-08T15:41:27Z" level=info msg=ConnectionClosed connectionID=112
+time="2026-05-08T15:41:27Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=113
+time="2026-05-08T15:41:27Z" level=info msg=ConnectionClosed connectionID=113
+time="2026-05-08T15:41:27Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=114
+time="2026-05-08T15:41:27Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=115
+time="2026-05-08T15:41:27Z" level=info msg=ConnectionClosed connectionID=114
+time="2026-05-08T15:41:27Z" level=info msg=ConnectionClosed connectionID=115
+time="2026-05-08T15:41:39Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=116
+time="2026-05-08T15:41:39Z" level=info msg=ConnectionClosed connectionID=116
+time="2026-05-08T15:41:39Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=117
+time="2026-05-08T15:41:39Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=118
+time="2026-05-08T15:41:39Z" level=info msg=ConnectionClosed connectionID=117
+time="2026-05-08T15:41:39Z" level=warning msg="error running query" connectTime="2026-05-08 15:41:39.795616239 +0000 UTC m=+1955.965507548" connectionDb=ralph connectionID=118 error="nothing to commit" queryTime="2026-05-08 15:41:39.807679543 +0000 UTC m=+1955.977570772"
+time="2026-05-08T15:41:40Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=119
+time="2026-05-08T15:41:40Z" level=info msg=ConnectionClosed connectionID=119
+time="2026-05-08T15:41:40Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=120
+time="2026-05-08T15:41:40Z" level=warning msg="error running query" connectTime="2026-05-08 15:41:40.108703821 +0000 UTC m=+1956.278595050" connectionDb=ralph connectionID=120 error="fatal: remote 'origin' not found.\nPlease make sure the remote exists." queryTime="2026-05-08 15:41:40.109527265 +0000 UTC m=+1956.279418494"
+time="2026-05-08T15:41:40Z" level=info msg=ConnectionClosed connectionID=120
+time="2026-05-08T15:41:40Z" level=info msg=ConnectionClosed connectionID=118
+time="2026-05-08T15:41:47Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=121
+time="2026-05-08T15:41:47Z" level=info msg=ConnectionClosed connectionID=121
+time="2026-05-08T15:41:47Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=122
+time="2026-05-08T15:41:47Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=123
+time="2026-05-08T15:41:47Z" level=info msg=ConnectionClosed connectionID=122
+time="2026-05-08T15:41:47Z" level=info msg=ConnectionClosed connectionID=123

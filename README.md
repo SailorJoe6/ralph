@@ -157,7 +157,7 @@ Options:
 Subcommands:
 - `ralph start` - alias for runtime mode (prints a reminder that `ralph` is all that's needed, `ralph start` is just an alias).
 - `ralph init` - project setup command.
-- `ralph upgrade` - migrate a legacy V1 `ralph/` layout to V2 `.ralph/`.
+- `ralph upgrade` - migrate a legacy V1 `ralph/` layout or old V2 `.ralph/prompts/` layout to skills-first V2 `.ralph/`.
 
 ## Container Support
 

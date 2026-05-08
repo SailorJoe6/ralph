@@ -6,9 +6,10 @@ Common errors and fixes.
 - `--freestyle` with `--unattended` is accepted but normalized to `--freestyle --yolo`.
 - `--resume [id]` is valid with either tool. If `id` is omitted, Ralph resumes the latest session on the first pass only.
 
-**Missing Prompts**
-- If a selected prompt file is missing, `ralph` exits and prints prompt-creation guidance.
-- Runtime prompt lookup path is `<project_root>/.ralph/prompts/` in normal flow, and `<cwd>/.ralph/prompts/` in `--freestyle`.
+**Missing Skills**
+- If a selected skill file is missing, `ralph` exits and prints skill-creation guidance.
+- Runtime skill lookup path is `<project_root>/.ralph/skills/<phase>/SKILL.md` in normal flow, and `<cwd>/.ralph/skills/<phase>/SKILL.md` in `--freestyle`.
+- Legacy projects with `.ralph/prompts/` and no `.ralph/skills/` still run, but Ralph prints guidance to run `ralph upgrade`.
 
 **Container Errors**
 - `Error: container not found` or `Error: container is not running`: start the container and retry.

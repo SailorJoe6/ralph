@@ -13,8 +13,10 @@ LEGACY_ENV_FILE=""
 LEGACY_ROOT=""
 PROJECT_ROOT=""
 V2_ROOT=""
+UPGRADE_MODE=""
 
 PATH_KEYS=(SPECIFICATION EXECUTION_PLAN LOG_DIR ERROR_LOG OUTPUT_LOG)
+PHASES=(design plan execute handoff prepare blocked)
 
 CREATED_TOP_LEVEL_TRACKER=$'\n'
 LEGACY_CLEANUP_REASON=""
@@ -23,7 +25,7 @@ print_help() {
   cat <<'EOF_HELP'
 Usage: ralph upgrade [OPTIONS]
 
-Upgrade a legacy V1 Ralph project layout (./ralph/) to V2 (.ralph/).
+Upgrade a legacy Ralph project layout to the current skills-first V2 layout.
 
 Options:
   --project <path>        Project root to upgrade (defaults to current directory)
@@ -98,7 +100,7 @@ add_stealth_excludes() {
   local rel_dir=""
   local git_exclude_path=""
 
-  for rel_dir in .ralph .beads .codex .claude; do
+  for rel_dir in .ralph .beads .agents .codex .claude; do
     if top_level_created "$rel_dir"; then
       created_entries+=("${rel_dir}/")
     fi
@@ -287,14 +289,131 @@ remove_empty_legacy_dirs() {
   find "$LEGACY_ROOT" -mindepth 1 -depth -type d -empty -delete 2>/dev/null || true
 }
 
+phase_from_prompt_file() {
+  local prompt_file="$1"
+  local phase=""
+
+  case "$prompt_file" in
+    design.md) phase="design" ;;
+    plan.md) phase="plan" ;;
+    execute.md) phase="execute" ;;
+    handoff.md) phase="handoff" ;;
+    prepare.md) phase="prepare" ;;
+    blocked.md) phase="blocked" ;;
+    *) phase="" ;;
+  esac
+
+  printf '%s' "$phase"
+}
+
+assistant_skill_target() {
+  local phase="$1"
+  printf '../../.ralph/skills/%s' "$phase"
+}
+
+prompt_target_is_ralph_managed() {
+  local target_resolved="$1"
+  local prompt_root="$2"
+  local phase=""
+
+  if [[ "$target_resolved" != "$prompt_root/"* ]]; then
+    return 1
+  fi
+
+  phase="$(phase_from_prompt_file "$(basename "$target_resolved")")"
+  [[ -n "$phase" ]]
+}
+
+ensure_assistant_skill_link() {
+  local tool_dir="$1"
+  local phase="$2"
+  local skills_dir="$PROJECT_ROOT/$tool_dir/skills"
+  local skill_link="$skills_dir/$phase"
+  local expected_target=""
+
+  if [[ ! -f "$V2_ROOT/skills/$phase/SKILL.md" ]]; then
+    warn "Skipping $tool_dir skill migration for '$phase' because destination skill is missing"
+    return 0
+  fi
+
+  ensure_top_level_dir "$tool_dir"
+  mkdir -p "$skills_dir"
+  expected_target="$(assistant_skill_target "$phase")"
+
+  if [[ -L "$skill_link" ]]; then
+    if [[ "$(readlink "$skill_link")" == "$expected_target" ]]; then
+      info "Preserved existing assistant skill symlink: ${skill_link#$PROJECT_ROOT/}"
+      return 0
+    fi
+    warn "Preserving custom assistant skill symlink: ${skill_link#$PROJECT_ROOT/}"
+    return 0
+  fi
+
+  if [[ -e "$skill_link" ]]; then
+    warn "Preserving custom assistant skill entry: ${skill_link#$PROJECT_ROOT/}"
+    return 0
+  fi
+
+  ln -s "$expected_target" "$skill_link"
+  info "Created assistant skill symlink: ${skill_link#$PROJECT_ROOT/} -> $expected_target"
+}
+
+replace_managed_skill_dir_with_link() {
+  local skill_dir="$1"
+  local phase="$2"
+  local expected_target=""
+
+  expected_target="$(assistant_skill_target "$phase")"
+  rm -rf "$skill_dir"
+  ln -s "$expected_target" "$skill_dir"
+  info "Migrated assistant skill directory: ${skill_dir#$PROJECT_ROOT/} -> $expected_target"
+}
+
+maybe_migrate_legacy_skill_dir() {
+  local tool_dir="$1"
+  local phase="$2"
+  local prompt_root="$3"
+  local skill_dir="$PROJECT_ROOT/$tool_dir/skills/$phase"
+  local skill_file="$skill_dir/SKILL.md"
+  local target_raw=""
+  local target_resolved=""
+
+  if [[ -L "$skill_dir" ]]; then
+    if [[ "$(readlink "$skill_dir")" == "$(assistant_skill_target "$phase")" ]]; then
+      return 0
+    fi
+    warn "Preserving custom assistant skill symlink: ${skill_dir#$PROJECT_ROOT/}"
+    return 0
+  fi
+
+  if [[ ! -d "$skill_dir" || ! -L "$skill_file" ]]; then
+    return 0
+  fi
+
+  target_raw="$(readlink "$skill_file")"
+  if [[ "$target_raw" == /* ]]; then
+    target_resolved="$(ralph_normalize_path "$target_raw")"
+  else
+    target_resolved="$(ralph_resolve_against_root "$(dirname "$skill_file")" "$target_raw")"
+  fi
+
+  if ! prompt_target_is_ralph_managed "$target_resolved" "$prompt_root"; then
+    warn "Preserving custom assistant skill directory: ${skill_dir#$PROJECT_ROOT/}"
+    return 0
+  fi
+
+  replace_managed_skill_dir_with_link "$skill_dir" "$phase"
+}
+
 rewrite_legacy_prompt_symlink() {
-  local link_path="$1"
+  local tool_dir="$1"
+  local link_path="$2"
+  local prompt_root="$3"
   local target_raw=""
   local link_dir=""
   local target_resolved=""
   local prompt_file=""
-  local new_prompt_abs=""
-  local new_target_rel=""
+  local phase=""
 
   if [[ ! -L "$link_path" ]]; then
     return 0
@@ -309,24 +428,26 @@ rewrite_legacy_prompt_symlink() {
     target_resolved="$(ralph_resolve_against_root "$link_dir" "$target_raw")"
   fi
 
-  if [[ "$target_resolved" != "$LEGACY_ROOT/prompts/"* ]]; then
+  if ! prompt_target_is_ralph_managed "$target_resolved" "$prompt_root"; then
     return 0
   fi
 
   prompt_file="$(basename "$target_resolved")"
-  new_prompt_abs="$V2_ROOT/prompts/$prompt_file"
-  if [[ ! -f "$new_prompt_abs" ]]; then
-    warn "Skipping symlink rewrite for '$link_path' because migrated prompt is missing: $new_prompt_abs"
+  phase="$(phase_from_prompt_file "$prompt_file")"
+  if [[ ! -f "$V2_ROOT/skills/$phase/SKILL.md" ]]; then
+    warn "Skipping command migration for '${link_path#$PROJECT_ROOT/}' because destination skill is missing"
     return 0
   fi
 
-  new_target_rel="../../.ralph/prompts/$prompt_file"
-  ln -sfn "$new_target_rel" "$link_path"
-  info "Rewrote command symlink: ${link_path#$PROJECT_ROOT/} -> $new_target_rel"
+  rm -f "$link_path"
+  ensure_assistant_skill_link "$tool_dir" "$phase"
+  ensure_assistant_skill_link ".agents" "$phase"
+  info "Removed legacy command symlink: ${link_path#$PROJECT_ROOT/}"
 }
 
 rewrite_legacy_prompt_symlinks_for_tool() {
   local tool_dir="$1"
+  local prompt_root="$2"
   local commands_dir="$PROJECT_ROOT/$tool_dir/commands"
   local link_path=""
 
@@ -335,13 +456,25 @@ rewrite_legacy_prompt_symlinks_for_tool() {
   fi
 
   while IFS= read -r link_path; do
-    rewrite_legacy_prompt_symlink "$link_path"
+    rewrite_legacy_prompt_symlink "$tool_dir" "$link_path" "$prompt_root"
   done < <(find "$commands_dir" -maxdepth 1 -type l -print 2>/dev/null | sort || true)
+
+  rmdir "$commands_dir" 2>/dev/null || true
 }
 
-rewrite_legacy_prompt_symlinks() {
-  rewrite_legacy_prompt_symlinks_for_tool ".claude"
-  rewrite_legacy_prompt_symlinks_for_tool ".codex"
+migrate_legacy_assistant_entrypoints() {
+  local prompt_root="$1"
+  local tool_dir=""
+  local phase=""
+
+  for tool_dir in .agents .claude .codex; do
+    for phase in "${PHASES[@]}"; do
+      maybe_migrate_legacy_skill_dir "$tool_dir" "$phase" "$prompt_root"
+    done
+  done
+
+  rewrite_legacy_prompt_symlinks_for_tool ".claude" "$prompt_root"
+  rewrite_legacy_prompt_symlinks_for_tool ".codex" "$prompt_root"
 }
 
 legacy_repo_is_clean_for_cleanup() {
@@ -411,6 +544,33 @@ migrate_file_path() {
   cleanup_empty_legacy_parents "$(dirname "$src")"
 }
 
+migrate_prompt_to_skill() {
+  local src="$1"
+  local phase="$2"
+  local dest="$V2_ROOT/skills/$phase/SKILL.md"
+
+  if [[ ! -e "$src" || -d "$src" ]]; then
+    return 0
+  fi
+
+  mkdir -p "$(dirname "$dest")"
+  if [[ -e "$dest" ]]; then
+    if cmp -s "$src" "$dest"; then
+      rm -f "$src"
+      info "Skipped prompt $phase.md; destination skill already had identical content: $dest"
+      cleanup_empty_legacy_parents "$(dirname "$src")"
+      return 0
+    fi
+
+    warn "Preserving existing skill with different content; legacy prompt left in place: $dest"
+    return 0
+  fi
+
+  mv "$src" "$dest"
+  info "Migrated prompt $phase.md to skill: $src -> $dest"
+  cleanup_empty_legacy_parents "$(dirname "$src")"
+}
+
 merge_directory_contents() {
   local src="$1"
   local dest="$2"
@@ -444,11 +604,11 @@ migrate_known_artifacts() {
   local dest_error=""
   local dest_output=""
 
-  local prompt_name=""
+  local phase=""
 
   # Migrate only active prompt files used by runtime/init workflows.
-  for prompt_name in design.md plan.md execute.md handoff.md prepare.md blocked.md; do
-    migrate_file_path "$LEGACY_ROOT/prompts/$prompt_name" "$V2_ROOT/prompts/$prompt_name" "prompt $prompt_name"
+  for phase in "${PHASES[@]}"; do
+    migrate_prompt_to_skill "$LEGACY_ROOT/prompts/$phase.md" "$phase"
   done
 
   # Plans are migrated recursively to preserve archive/blocked/future state.
@@ -475,6 +635,43 @@ migrate_known_artifacts() {
 
   rm -f "$LEGACY_ROOT/.env" "$LEGACY_ROOT/.env.example"
   cleanup_empty_legacy_parents "$LEGACY_ROOT"
+}
+
+remove_known_v2_prompt_placeholders() {
+  local prompts_root="$V2_ROOT/prompts"
+  rm -f "$prompts_root/.keep" "$prompts_root/.gitkeep"
+}
+
+finalize_v2_prompts_directory() {
+  local prompts_root="$V2_ROOT/prompts"
+  local leftovers=""
+
+  if [[ ! -d "$prompts_root" ]]; then
+    return 0
+  fi
+
+  remove_known_v2_prompt_placeholders
+  find "$prompts_root" -mindepth 1 -depth -type d -empty -delete 2>/dev/null || true
+  leftovers="$(find "$prompts_root" -mindepth 1 -print | sort || true)"
+  if [[ -n "$leftovers" ]]; then
+    warn "Preserving legacy prompt directory because non-migrated content remains: ${prompts_root#$PROJECT_ROOT/}"
+    print_leftovers "$leftovers"
+    return 0
+  fi
+
+  rmdir "$prompts_root"
+  info "Removed legacy prompt directory: ${prompts_root#$PROJECT_ROOT/}"
+}
+
+migrate_old_v2_prompts() {
+  local prompt_root="$V2_ROOT/prompts"
+  local phase=""
+
+  mkdir -p "$V2_ROOT/skills"
+  for phase in "${PHASES[@]}"; do
+    migrate_prompt_to_skill "$prompt_root/$phase.md" "$phase"
+  done
+  finalize_v2_prompts_directory
 }
 
 finalize_legacy_directory() {
@@ -545,25 +742,41 @@ if [[ ! -d "$PROJECT_ROOT" ]]; then
   fail "project root does not exist or is not a directory: $PROJECT_ROOT"
 fi
 
-if [[ ! -d "$LEGACY_ROOT" ]]; then
-  fail "legacy V1 Ralph folder not found at: $LEGACY_ROOT"
+if [[ -d "$LEGACY_ROOT" ]]; then
+  UPGRADE_MODE="v1"
+  if [[ -e "$V2_ROOT" ]]; then
+    fail "target V2 folder already exists at: $V2_ROOT"
+  fi
+elif [[ -d "$V2_ROOT/prompts" && ! -e "$V2_ROOT/skills" ]]; then
+  UPGRADE_MODE="v2-prompts"
+  LEGACY_ROOT="$V2_ROOT"
+  LEGACY_ENV_FILE="$V2_ROOT/.env"
+else
+  fail "no upgradeable Ralph layout found; expected legacy V1 folder '$PROJECT_ROOT/ralph' or old V2 prompts folder '$PROJECT_ROOT/.ralph/prompts' without '$PROJECT_ROOT/.ralph/skills'"
 fi
 
-if [[ -e "$V2_ROOT" ]]; then
-  fail "target V2 folder already exists at: $V2_ROOT"
+if [[ "$UPGRADE_MODE" == "v1" ]]; then
+  ensure_top_level_dir ".ralph"
+  mkdir -p "$V2_ROOT/skills" "$V2_ROOT/plans" "$V2_ROOT/logs"
+
+  capture_legacy_effective_paths
+  compute_migrated_paths
+  write_migrated_env_file
+  cp "$SCRIPT_DIR/.env.example" "$V2_ROOT/.env.example"
+
+  migrate_known_artifacts
+  migrate_legacy_assistant_entrypoints "$PROJECT_ROOT/ralph/prompts"
+  finalize_legacy_directory
+else
+  mkdir -p "$V2_ROOT"
+  mkdir -p "$V2_ROOT/plans" "$V2_ROOT/logs"
+  if [[ ! -e "$V2_ROOT/.env.example" ]]; then
+    cp "$SCRIPT_DIR/.env.example" "$V2_ROOT/.env.example"
+  fi
+
+  migrate_old_v2_prompts
+  migrate_legacy_assistant_entrypoints "$PROJECT_ROOT/.ralph/prompts"
 fi
-
-ensure_top_level_dir ".ralph"
-mkdir -p "$V2_ROOT/prompts" "$V2_ROOT/plans" "$V2_ROOT/logs"
-
-capture_legacy_effective_paths
-compute_migrated_paths
-write_migrated_env_file
-cp "$SCRIPT_DIR/.env.example" "$V2_ROOT/.env.example"
-
-migrate_known_artifacts
-rewrite_legacy_prompt_symlinks
-finalize_legacy_directory
 
 if [[ "$STEALTH" == "1" ]]; then
   add_stealth_excludes

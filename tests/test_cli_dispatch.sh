@@ -69,7 +69,7 @@ TMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TMP_ROOT"' EXIT
 run_cmd "$RALPH_BIN" upgrade --project "$TMP_ROOT"
 [[ "$RUN_STATUS" == "1" ]] || { echo "Expected ralph upgrade precondition failure exit 1" >&2; exit 1; }
-assert_contains "$RUN_STDERR" "legacy V1 Ralph folder not found" "upgrade precondition error"
+assert_contains "$RUN_STDERR" "no upgradeable Ralph layout found" "upgrade precondition error"
 
 run_cmd "$RALPH_BIN" start --definitely-invalid
 [[ "$RUN_STATUS" == "2" ]] || { echo "Expected invalid start option to exit 2" >&2; exit 1; }
