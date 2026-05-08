@@ -1807,3 +1807,15 @@ time="2026-05-08T15:31:05Z" level=info msg=NewConnection DisableClientMultiState
 time="2026-05-08T15:31:05Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=76
 time="2026-05-08T15:31:05Z" level=info msg=ConnectionClosed connectionID=75
 time="2026-05-08T15:31:05Z" level=info msg=ConnectionClosed connectionID=76
+time="2026-05-08T15:31:54Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=77
+time="2026-05-08T15:31:54Z" level=info msg=ConnectionClosed connectionID=77
+time="2026-05-08T15:31:54Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=78
+time="2026-05-08T15:31:54Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=79
+time="2026-05-08T15:31:54Z" level=info msg=ConnectionClosed connectionID=78
+time="2026-05-08T15:31:54Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=80
+time="2026-05-08T15:31:54Z" level=info msg=ConnectionClosed connectionID=80
+time="2026-05-08T15:31:54Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=81
+time="2026-05-08T15:31:54Z" level=info msg=NewConnection DisableClientMultiStatements=false connectionID=82
+time="2026-05-08T15:31:54Z" level=info msg=ConnectionClosed connectionID=81
+time="2026-05-08T15:31:54Z" level=info msg=ConnectionClosed connectionID=79
+time="2026-05-08T15:31:54Z" level=info msg=ConnectionClosed connectionID=82
