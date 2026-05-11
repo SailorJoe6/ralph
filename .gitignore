@@ -17,6 +17,7 @@ logs/*
 !logs/.keep
 .ralph/logs/
 
-# Dolt data is local-only for beads
+# Beads local state (Dolt data, logs, etc.)
+.beads/
 .dolt/
 *.db
