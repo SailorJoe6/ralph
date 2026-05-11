@@ -135,9 +135,9 @@ assert_not_exists "$PROJECT1/.ralph/prompts" "init does not create legacy prompt
 assert_dir "$PROJECT1/.ralph/plans" "init creates plans dir"
 assert_dir "$PROJECT1/.ralph/logs" "init creates logs dir"
 assert_file_equals "$RALPH_DIR/.env.example" "$PROJECT1/.ralph/.env.example" "init overwrites .env.example from bundled template"
-assert_file_equals "$RALPH_DIR/skills/execute.example.md" "$PROJECT1/.ralph/skills/execute/SKILL.md" "default execute template"
-assert_file_equals "$RALPH_DIR/skills/handoff.example.md" "$PROJECT1/.ralph/skills/handoff/SKILL.md" "default handoff template"
-assert_file_equals "$RALPH_DIR/skills/prepare.example.md" "$PROJECT1/.ralph/skills/prepare/SKILL.md" "default prepare template"
+assert_file_equals "$RALPH_DIR/skills/default/execute/SKILL.md" "$PROJECT1/.ralph/skills/execute/SKILL.md" "default execute template"
+assert_file_equals "$RALPH_DIR/skills/default/handoff/SKILL.md" "$PROJECT1/.ralph/skills/handoff/SKILL.md" "default handoff template"
+assert_file_equals "$RALPH_DIR/skills/default/prepare/SKILL.md" "$PROJECT1/.ralph/skills/prepare/SKILL.md" "default prepare template"
 
 # Case 2: existing active skill is preserved; .env.example is always overwritten.
 PROJECT2="$TMP_ROOT/project-existing"
@@ -179,10 +179,10 @@ run_cmd env PATH="$FAKE_BIN:$PATH" BD_LOG="$BD_LOG" "$RALPH_BIN" init --project 
 assert_eq "$RUN_STATUS" "0" "init --beads exit status"
 assert_dir "$PROJECT3/.beads" "beads init creates .beads"
 assert_contains "$(cat "$BD_LOG")" "bd init $PROJECT3" "bd init invoked in project root"
-assert_file_equals "$RALPH_DIR/skills/execute.example.beads.md" "$PROJECT3/.ralph/skills/execute/SKILL.md" "beads execute template"
-assert_file_equals "$RALPH_DIR/skills/handoff.example.beads.md" "$PROJECT3/.ralph/skills/handoff/SKILL.md" "beads handoff template"
-assert_file_equals "$RALPH_DIR/skills/prepare.example.beads.md" "$PROJECT3/.ralph/skills/prepare/SKILL.md" "beads prepare template"
-assert_file_equals "$RALPH_DIR/skills/blocked.example.md" "$PROJECT3/.ralph/skills/blocked/SKILL.md" "blocked fallback template"
+assert_file_equals "$RALPH_DIR/skills/beads/execute/SKILL.md" "$PROJECT3/.ralph/skills/execute/SKILL.md" "beads execute template"
+assert_file_equals "$RALPH_DIR/skills/beads/handoff/SKILL.md" "$PROJECT3/.ralph/skills/handoff/SKILL.md" "beads handoff template"
+assert_file_equals "$RALPH_DIR/skills/beads/prepare/SKILL.md" "$PROJECT3/.ralph/skills/prepare/SKILL.md" "beads prepare template"
+assert_file_equals "$RALPH_DIR/skills/default/blocked/SKILL.md" "$PROJECT3/.ralph/skills/blocked/SKILL.md" "blocked fallback template"
 
 # Re-run with existing .beads should remain successful and skip repeated bd init.
 run_cmd env PATH="$FAKE_BIN:$PATH" BD_LOG="$BD_LOG" "$RALPH_BIN" init --project "$PROJECT3" --beads

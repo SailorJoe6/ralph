@@ -50,12 +50,12 @@ EOF
 }
 
 freestyle_fallback_prompt() {
-  if [[ -f "$SCRIPT_DIR/skills/prepare.example.beads.md" ]]; then
-    printf '%s\n' "$SCRIPT_DIR/skills/prepare.example.beads.md"
+  if [[ -f "$SCRIPT_DIR/skills/beads/prepare/SKILL.md" ]]; then
+    printf '%s\n' "$SCRIPT_DIR/skills/beads/prepare/SKILL.md"
     return 0
   fi
-  if [[ -f "$SCRIPT_DIR/skills/prepare.example.md" ]]; then
-    printf '%s\n' "$SCRIPT_DIR/skills/prepare.example.md"
+  if [[ -f "$SCRIPT_DIR/skills/default/prepare/SKILL.md" ]]; then
+    printf '%s\n' "$SCRIPT_DIR/skills/default/prepare/SKILL.md"
     return 0
   fi
   return 1
@@ -604,27 +604,27 @@ while :; do
     echo ""
     missing_any=0
     if [[ ! -f "$DESIGN_PROMPT" ]]; then
-      echo "  mkdir -p \"$(dirname "$DESIGN_PROMPT")\" && cp \"$SCRIPT_DIR/skills/design.example.md\" \"$DESIGN_PROMPT\""
+      echo "  mkdir -p \"$(dirname "$DESIGN_PROMPT")\" && cp \"$SCRIPT_DIR/skills/default/design/SKILL.md\" \"$DESIGN_PROMPT\""
       missing_any=1
     fi
     if [[ ! -f "$PLAN_PROMPT" ]]; then
-      echo "  mkdir -p \"$(dirname "$PLAN_PROMPT")\" && cp \"$SCRIPT_DIR/skills/plan.example.md\" \"$PLAN_PROMPT\""
+      echo "  mkdir -p \"$(dirname "$PLAN_PROMPT")\" && cp \"$SCRIPT_DIR/skills/default/plan/SKILL.md\" \"$PLAN_PROMPT\""
       missing_any=1
     fi
     if [[ ! -f "$EXECUTE_PROMPT" ]]; then
-      echo "  mkdir -p \"$(dirname "$EXECUTE_PROMPT")\" && cp \"$SCRIPT_DIR/skills/execute.example.md\" \"$EXECUTE_PROMPT\""
+      echo "  mkdir -p \"$(dirname "$EXECUTE_PROMPT")\" && cp \"$SCRIPT_DIR/skills/default/execute/SKILL.md\" \"$EXECUTE_PROMPT\""
       missing_any=1
     fi
     if [[ ! -f "$PREPARE_PROMPT" ]]; then
-      echo "  mkdir -p \"$(dirname "$PREPARE_PROMPT")\" && cp \"$SCRIPT_DIR/skills/prepare.example.md\" \"$PREPARE_PROMPT\""
+      echo "  mkdir -p \"$(dirname "$PREPARE_PROMPT")\" && cp \"$SCRIPT_DIR/skills/default/prepare/SKILL.md\" \"$PREPARE_PROMPT\""
       missing_any=1
     fi
     if [[ ! -f "$HANDOFF_PROMPT" ]]; then
-      echo "  mkdir -p \"$(dirname "$HANDOFF_PROMPT")\" && cp \"$SCRIPT_DIR/skills/handoff.example.md\" \"$HANDOFF_PROMPT\""
+      echo "  mkdir -p \"$(dirname "$HANDOFF_PROMPT")\" && cp \"$SCRIPT_DIR/skills/default/handoff/SKILL.md\" \"$HANDOFF_PROMPT\""
       missing_any=1
     fi
     if [[ ! -f "$BLOCKED_PROMPT" ]]; then
-      echo "  mkdir -p \"$(dirname "$BLOCKED_PROMPT")\" && cp \"$SCRIPT_DIR/skills/blocked.example.md\" \"$BLOCKED_PROMPT\""
+      echo "  mkdir -p \"$(dirname "$BLOCKED_PROMPT")\" && cp \"$SCRIPT_DIR/skills/default/blocked/SKILL.md\" \"$BLOCKED_PROMPT\""
       missing_any=1
     fi
     if [[ $missing_any -eq 0 ]]; then

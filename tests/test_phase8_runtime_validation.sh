@@ -195,7 +195,7 @@ mkdir -p "$HOME1" "$PROJECT1/.ralph/prompts"
 run_start "$PROJECT1" "$HOME1" "" "$START_BIN"
 assert_eq "$RUN_STATUS" "1" "missing prompt exit status"
 assert_contains "$RUN_STDOUT$RUN_STDERR" "Instruction file not found: $PROJECT1/.ralph/skills/prepare/SKILL.md" "missing instruction path"
-assert_contains "$RUN_STDOUT$RUN_STDERR" "/skills/prepare.example.md" "missing prepare skill template guidance"
+assert_contains "$RUN_STDOUT$RUN_STDERR" "/skills/default/prepare/SKILL.md" "missing prepare skill template guidance"
 assert_contains "$RUN_STDOUT$RUN_STDERR" "$PROJECT1/.ralph/skills/prepare/SKILL.md" "missing skill destination guidance"
 
 # Case 3: unattended execute mode writes logs to .ralph/logs.

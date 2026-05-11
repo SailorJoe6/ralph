@@ -16,7 +16,6 @@ V2_ROOT=""
 UPGRADE_MODE=""
 
 PATH_KEYS=(SPECIFICATION EXECUTION_PLAN LOG_DIR ERROR_LOG OUTPUT_LOG)
-PHASES=(design plan execute handoff prepare blocked)
 
 CREATED_TOP_LEVEL_TRACKER=$'\n'
 LEGACY_CLEANUP_REASON=""
@@ -294,13 +293,8 @@ phase_from_prompt_file() {
   local phase=""
 
   case "$prompt_file" in
-    design.md) phase="design" ;;
-    plan.md) phase="plan" ;;
-    execute.md) phase="execute" ;;
-    handoff.md) phase="handoff" ;;
-    prepare.md) phase="prepare" ;;
-    blocked.md) phase="blocked" ;;
-    *) phase="" ;;
+    *.example.md|*.example.*.md) phase="" ;;
+    *.md) phase="${prompt_file%.md}" ;;
   esac
 
   printf '%s' "$phase"
@@ -445,11 +439,31 @@ rewrite_legacy_prompt_symlink() {
   info "Removed legacy command symlink: ${link_path#$PROJECT_ROOT/}"
 }
 
+migrate_command_file_to_skill() {
+  local tool_dir="$1"
+  local file_path="$2"
+  local filename=""
+  local phase=""
+
+  filename="$(basename "$file_path")"
+  phase="$(phase_from_prompt_file "$filename")"
+  if [[ -z "$phase" ]]; then
+    return 0
+  fi
+
+  migrate_prompt_to_skill "$file_path" "$phase"
+  if [[ -f "$V2_ROOT/skills/$phase/SKILL.md" ]]; then
+    ensure_assistant_skill_link "$tool_dir" "$phase"
+    ensure_assistant_skill_link ".agents" "$phase"
+  fi
+}
+
 rewrite_legacy_prompt_symlinks_for_tool() {
   local tool_dir="$1"
   local prompt_root="$2"
   local commands_dir="$PROJECT_ROOT/$tool_dir/commands"
   local link_path=""
+  local file_path=""
 
   if [[ ! -d "$commands_dir" ]]; then
     return 0
@@ -459,6 +473,10 @@ rewrite_legacy_prompt_symlinks_for_tool() {
     rewrite_legacy_prompt_symlink "$tool_dir" "$link_path" "$prompt_root"
   done < <(find "$commands_dir" -maxdepth 1 -type l -print 2>/dev/null | sort || true)
 
+  while IFS= read -r file_path; do
+    migrate_command_file_to_skill "$tool_dir" "$file_path"
+  done < <(find "$commands_dir" -maxdepth 1 -type f -name '*.md' -print 2>/dev/null | sort || true)
+
   rmdir "$commands_dir" 2>/dev/null || true
 }
 
@@ -466,11 +484,16 @@ migrate_legacy_assistant_entrypoints() {
   local prompt_root="$1"
   local tool_dir=""
   local phase=""
+  local skill_dir=""
 
   for tool_dir in .agents .claude .codex; do
-    for phase in "${PHASES[@]}"; do
-      maybe_migrate_legacy_skill_dir "$tool_dir" "$phase" "$prompt_root"
-    done
+    if [[ -d "$PROJECT_ROOT/$tool_dir/skills" ]]; then
+      for skill_dir in "$PROJECT_ROOT/$tool_dir/skills"/*/; do
+        [[ -d "$skill_dir" ]] || continue
+        phase="$(basename "$skill_dir")"
+        maybe_migrate_legacy_skill_dir "$tool_dir" "$phase" "$prompt_root"
+      done
+    fi
   done
 
   rewrite_legacy_prompt_symlinks_for_tool ".claude" "$prompt_root"
@@ -605,11 +628,17 @@ migrate_known_artifacts() {
   local dest_output=""
 
   local phase=""
+  local prompt_file=""
 
-  # Migrate only active prompt files used by runtime/init workflows.
-  for phase in "${PHASES[@]}"; do
-    migrate_prompt_to_skill "$LEGACY_ROOT/prompts/$phase.md" "$phase"
-  done
+  # Migrate all prompt files found in legacy prompts directory.
+  if [[ -d "$LEGACY_ROOT/prompts" ]]; then
+    for prompt_file in "$LEGACY_ROOT/prompts"/*.md; do
+      [[ -f "$prompt_file" ]] || continue
+      phase="$(phase_from_prompt_file "$(basename "$prompt_file")")"
+      [[ -n "$phase" ]] || continue
+      migrate_prompt_to_skill "$prompt_file" "$phase"
+    done
+  fi
 
   # Plans are migrated recursively to preserve archive/blocked/future state.
   merge_directory_contents "$LEGACY_ROOT/plans" "$V2_ROOT/plans" "plans"
@@ -666,11 +695,17 @@ finalize_v2_prompts_directory() {
 migrate_old_v2_prompts() {
   local prompt_root="$V2_ROOT/prompts"
   local phase=""
+  local prompt_file=""
 
   mkdir -p "$V2_ROOT/skills"
-  for phase in "${PHASES[@]}"; do
-    migrate_prompt_to_skill "$prompt_root/$phase.md" "$phase"
-  done
+  if [[ -d "$prompt_root" ]]; then
+    for prompt_file in "$prompt_root"/*.md; do
+      [[ -f "$prompt_file" ]] || continue
+      phase="$(phase_from_prompt_file "$(basename "$prompt_file")")"
+      [[ -n "$phase" ]] || continue
+      migrate_prompt_to_skill "$prompt_file" "$phase"
+    done
+  fi
   finalize_v2_prompts_directory
 }
 

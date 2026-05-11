@@ -355,7 +355,7 @@ run_cmd "$RALPH_BIN" upgrade --project "$PROJECT14"
 assert_eq "$RUN_STATUS" "0" "old symlinked skill migration exit status"
 assert_symlink_target "$PROJECT14/.claude/skills/execute" "../../.ralph/skills/execute" "old symlinked skill dir migrated"
 
-# Case 15: custom commands and custom skill directories are preserved.
+# Case 15: custom commands are migrated to skills; custom skill directories are preserved.
 PROJECT15="$TMP_ROOT/project-custom-assistant-content"
 mkdir -p "$PROJECT15/.ralph/prompts" "$PROJECT15/.claude/commands" "$PROJECT15/.codex/skills/design"
 printf 'design prompt\n' > "$PROJECT15/.ralph/prompts/design.md"
@@ -363,7 +363,7 @@ printf 'custom command\n' > "$PROJECT15/.claude/commands/custom.md"
 printf 'custom skill\n' > "$PROJECT15/.codex/skills/design/SKILL.md"
 run_cmd "$RALPH_BIN" upgrade --project "$PROJECT15"
 assert_eq "$RUN_STATUS" "0" "custom assistant preservation exit status"
-assert_exists "$PROJECT15/.claude/commands/custom.md" "custom command preserved"
+assert_exists "$PROJECT15/.ralph/skills/custom/SKILL.md" "custom command migrated to skill"
 assert_exists "$PROJECT15/.codex/skills/design/SKILL.md" "custom skill directory preserved"
 
 # Case 16: --stealth records assistant folders created by command migration.
