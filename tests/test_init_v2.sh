@@ -135,19 +135,23 @@ assert_not_exists "$PROJECT1/.ralph/prompts" "init does not create legacy prompt
 assert_dir "$PROJECT1/.ralph/plans" "init creates plans dir"
 assert_dir "$PROJECT1/.ralph/logs" "init creates logs dir"
 assert_file_equals "$RALPH_DIR/.env.example" "$PROJECT1/.ralph/.env.example" "init overwrites .env.example from bundled template"
+assert_dir "$PROJECT1/.ralph/plans/archive" "init creates archive dir"
+assert_file_equals "$RALPH_DIR/plans/archive/README.example.md" "$PROJECT1/.ralph/plans/archive/README.md" "archive README seeded from template"
 assert_file_equals "$RALPH_DIR/skills/default/execute/SKILL.md" "$PROJECT1/.ralph/skills/execute/SKILL.md" "default execute template"
 assert_file_equals "$RALPH_DIR/skills/default/handoff/SKILL.md" "$PROJECT1/.ralph/skills/handoff/SKILL.md" "default handoff template"
 assert_file_equals "$RALPH_DIR/skills/default/prepare/SKILL.md" "$PROJECT1/.ralph/skills/prepare/SKILL.md" "default prepare template"
 
-# Case 2: existing active skill is preserved; .env.example is always overwritten.
+# Case 2: existing active skill is preserved; .env.example is always overwritten; archive README preserved.
 PROJECT2="$TMP_ROOT/project-existing"
-mkdir -p "$PROJECT2/.ralph/skills/plan"
+mkdir -p "$PROJECT2/.ralph/skills/plan" "$PROJECT2/.ralph/plans/archive"
 printf 'KEEP PLAN CONTENT\n' > "$PROJECT2/.ralph/skills/plan/SKILL.md"
 printf 'OLD ENV CONTENT\n' > "$PROJECT2/.ralph/.env.example"
+printf 'CUSTOM ARCHIVE README\n' > "$PROJECT2/.ralph/plans/archive/README.md"
 run_cmd "$RALPH_BIN" init --project "$PROJECT2"
 assert_eq "$RUN_STATUS" "0" "init existing dir exit status"
 assert_eq "$(cat "$PROJECT2/.ralph/skills/plan/SKILL.md")" "KEEP PLAN CONTENT" "existing skill preserved"
 assert_file_equals "$RALPH_DIR/.env.example" "$PROJECT2/.ralph/.env.example" ".env.example overwritten"
+assert_eq "$(cat "$PROJECT2/.ralph/plans/archive/README.md")" "CUSTOM ARCHIVE README" "existing archive README preserved"
 
 # Case 3: --project relative missing path is created.
 (

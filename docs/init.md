@@ -23,7 +23,9 @@ ralph init [OPTIONS]
   - `<project_root>/.ralph`
   - `<project_root>/.ralph/skills`
   - `<project_root>/.ralph/plans`
+  - `<project_root>/.ralph/plans/archive`
   - `<project_root>/.ralph/logs`
+- Seed the archive README (idempotent): copy the bundled `plans/archive/README.example.md` template to `<project_root>/.ralph/plans/archive/README.md` — only if that file does not already exist. This gives new projects a well-formatted archive from day one so the first completed cycle doesn't need to create the file from scratch.
 - Create active skill files in `<project_root>/.ralph/skills/<phase>/SKILL.md` from bundled templates, preserving any pre-existing active skill files.
 - The generated skill files include Agent Skills-compatible frontmatter. Runtime strips that frontmatter before sending instructions to Claude or Codex.
 - Copy the bundled runtime `.env.example` to `<project_root>/.ralph/.env.example` (always overwrite with latest example file).
