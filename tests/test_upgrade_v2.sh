@@ -153,7 +153,7 @@ assert_exists "$PROJECT1/.ralph/plans/archive/old.md" "archive plans migrated re
 assert_exists "$PROJECT1/.ralph/plans/blocked/SPECIFICATION.md" "blocked spec migrated"
 assert_exists "$PROJECT1/.ralph/plans/future/idea.md" "future plans migrated recursively"
 assert_exists "$PROJECT1/.ralph/logs/ERROR_LOG.md" "error log migrated"
-assert_exists "$PROJECT1/.ralph/logs/OUTPUT_LOG.md" "output log migrated"
+assert_exists "$PROJECT1/.ralph/logs/EXECUTION_LOG.md" "output log migrated"
 assert_not_exists "$PROJECT1/ralph" "legacy directory removed when empty"
 assert_contains "$(cat "$PROJECT1/.ralph/.env")" "SPECIFICATION=.ralph/plans/SPECIFICATION.md" "default specification rewrite persisted"
 assert_contains "$RUN_STDERR" "Rewriting SPECIFICATION" "rewrite warning emitted"
@@ -199,7 +199,7 @@ assert_contains "$(cat "$PROJECT4/.ralph/.env")" "CALLBACK=./scripts/check.sh" "
 assert_exists "$PROJECT4/.ralph/plans/SPECIFICATION.md" "custom spec moved to default v2 path"
 assert_exists "$PROJECT4/.ralph/plans/EXECUTION_PLAN.md" "custom plan moved to default v2 path"
 assert_exists "$PROJECT4/.ralph/logs/ERROR_LOG.md" "custom error log moved to default v2 path"
-assert_exists "$PROJECT4/.ralph/logs/OUTPUT_LOG.md" "custom output log moved to default v2 path"
+assert_exists "$PROJECT4/.ralph/logs/EXECUTION_LOG.md" "custom output log moved to default v2 path"
 
 # Case 5: unknown legacy content without a git repo fails with explicit error.
 PROJECT5="$TMP_ROOT/project-unknown"

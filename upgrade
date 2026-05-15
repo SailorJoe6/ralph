@@ -15,7 +15,7 @@ PROJECT_ROOT=""
 V2_ROOT=""
 UPGRADE_MODE=""
 
-PATH_KEYS=(SPECIFICATION EXECUTION_PLAN LOG_DIR ERROR_LOG OUTPUT_LOG)
+PATH_KEYS=(SPECIFICATION EXECUTION_PLAN LOG_DIR ERROR_LOG EXECUTION_LOG)
 
 CREATED_TOP_LEVEL_TRACKER=$'\n'
 LEGACY_CLEANUP_REASON=""
@@ -68,7 +68,7 @@ v2_default_for_key() {
     EXECUTION_PLAN) printf '%s' ".ralph/plans/EXECUTION_PLAN.md" ;;
     LOG_DIR) printf '%s' ".ralph/logs" ;;
     ERROR_LOG) printf '%s' ".ralph/logs/ERROR_LOG.md" ;;
-    OUTPUT_LOG) printf '%s' ".ralph/logs/OUTPUT_LOG.md" ;;
+    EXECUTION_LOG) printf '%s' ".ralph/logs/EXECUTION_LOG.md" ;;
     *) fail "internal error: unknown path key '$key'" ;;
   esac
 }
@@ -158,7 +158,7 @@ capture_legacy_effective_paths() {
   path_value_set LEGACY_EXPLICIT EXECUTION_PLAN "0"
   path_value_set LEGACY_EXPLICIT LOG_DIR "0"
   path_value_set LEGACY_EXPLICIT ERROR_LOG "0"
-  path_value_set LEGACY_EXPLICIT OUTPUT_LOG "0"
+  path_value_set LEGACY_EXPLICIT EXECUTION_LOG "0"
 
   if [[ -f "$LEGACY_ENV_FILE" ]]; then
     while IFS=$'\t' read -r key value; do
@@ -167,9 +167,13 @@ capture_legacy_effective_paths() {
     done < <(
       (
         set +u
-        unset SPECIFICATION EXECUTION_PLAN LOG_DIR ERROR_LOG OUTPUT_LOG
+        unset SPECIFICATION EXECUTION_PLAN LOG_DIR ERROR_LOG OUTPUT_LOG EXECUTION_LOG
         # shellcheck disable=SC1090
         source "$LEGACY_ENV_FILE"
+        # Accept legacy OUTPUT_LOG as EXECUTION_LOG during migration.
+        if [[ "${OUTPUT_LOG+x}" == "x" && ! "${EXECUTION_LOG+x}" == "x" ]]; then
+          EXECUTION_LOG="$OUTPUT_LOG"
+        fi
         for key in "${PATH_KEYS[@]}"; do
           if [[ "${!key+x}" == "x" ]]; then
             printf '%s\t%s\n' "$key" "${!key}"
@@ -183,8 +187,8 @@ capture_legacy_effective_paths() {
     path_value_set LEGACY_EFFECTIVE ERROR_LOG "$(path_value_get LEGACY_EFFECTIVE LOG_DIR)/ERROR_LOG.md"
   fi
 
-  if [[ "$(path_value_get LEGACY_EXPLICIT OUTPUT_LOG)" != "1" ]]; then
-    path_value_set LEGACY_EFFECTIVE OUTPUT_LOG "$(path_value_get LEGACY_EFFECTIVE LOG_DIR)/OUTPUT_LOG.md"
+  if [[ "$(path_value_get LEGACY_EXPLICIT EXECUTION_LOG)" != "1" ]]; then
+    path_value_set LEGACY_EFFECTIVE EXECUTION_LOG "$(path_value_get LEGACY_EFFECTIVE LOG_DIR)/OUTPUT_LOG.md"
   fi
 }
 
@@ -647,13 +651,13 @@ migrate_known_artifacts() {
   source_plan="$(resolved_path_from_setting "$(path_value_get LEGACY_EFFECTIVE EXECUTION_PLAN)")"
   source_log_dir="$(resolved_path_from_setting "$(path_value_get LEGACY_EFFECTIVE LOG_DIR)")"
   source_error="$(resolved_path_from_setting "$(path_value_get LEGACY_EFFECTIVE ERROR_LOG)")"
-  source_output="$(resolved_path_from_setting "$(path_value_get LEGACY_EFFECTIVE OUTPUT_LOG)")"
+  source_output="$(resolved_path_from_setting "$(path_value_get LEGACY_EFFECTIVE EXECUTION_LOG)")"
 
   dest_spec="$(resolved_path_from_setting "$(path_value_get MIGRATED_VALUES SPECIFICATION)")"
   dest_plan="$(resolved_path_from_setting "$(path_value_get MIGRATED_VALUES EXECUTION_PLAN)")"
   dest_log_dir="$(resolved_path_from_setting "$(path_value_get MIGRATED_VALUES LOG_DIR)")"
   dest_error="$(resolved_path_from_setting "$(path_value_get MIGRATED_VALUES ERROR_LOG)")"
-  dest_output="$(resolved_path_from_setting "$(path_value_get MIGRATED_VALUES OUTPUT_LOG)")"
+  dest_output="$(resolved_path_from_setting "$(path_value_get MIGRATED_VALUES EXECUTION_LOG)")"
 
   migrate_file_path "$source_spec" "$dest_spec" "specification"
   migrate_file_path "$source_plan" "$dest_plan" "execution plan"

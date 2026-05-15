@@ -643,8 +643,8 @@ while :; do
     if [[ -f "$ERROR_LOG" ]]; then
       error_offset=$(wc -c < "$ERROR_LOG")
     fi
-    if [[ -f "$OUTPUT_LOG" ]]; then
-      output_offset=$(wc -c < "$OUTPUT_LOG")
+    if [[ -f "$EXECUTION_LOG" ]]; then
+      output_offset=$(wc -c < "$EXECUTION_LOG")
     fi
     {
       printf '\n---\n\nPass %d:\n' "$PASS"
@@ -653,7 +653,7 @@ while :; do
       else
         run_claude 1 "$prompt_text"
       fi
-    } >> "$OUTPUT_LOG" 2> "$ERROR_LOG"
+    } >> "$EXECUTION_LOG" 2> "$ERROR_LOG"
   else
     if [[ $USE_CODEX -eq 1 ]]; then
       run_codex 0 "$prompt_text" 2> "$ERROR_LOG"
@@ -668,8 +668,8 @@ while :; do
       exit 0
     fi
   fi
-  if [[ $NONINTERACTIVE -eq 1 && -f "$OUTPUT_LOG" ]]; then
-    if interrupt_detected_in_output_log "$OUTPUT_LOG" "$output_offset"; then
+  if [[ $NONINTERACTIVE -eq 1 && -f "$EXECUTION_LOG" ]]; then
+    if interrupt_detected_in_output_log "$EXECUTION_LOG" "$output_offset"; then
       exit 0
     fi
   fi
@@ -737,7 +737,7 @@ while :; do
                 claude "${handoff_claude_flags[@]}" "${handoff_claude_teammate_flags[@]}" --continue "$handoff_text" || echo "Warning: Handoff failed (non-fatal)"
               fi
             fi
-          } >> "$OUTPUT_LOG" 2> "$ERROR_LOG"
+          } >> "$EXECUTION_LOG" 2> "$ERROR_LOG"
         else
           echo "Running handoff..."
           if [[ $USE_CODEX -eq 1 ]]; then

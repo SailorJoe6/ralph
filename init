@@ -254,7 +254,11 @@ if [[ "$YOLO" == "1" ]]; then
 fi
 
 ensure_top_level_dir ".ralph"
-mkdir -p "$PROJECT_ROOT/.ralph/skills" "$PROJECT_ROOT/.ralph/plans" "$PROJECT_ROOT/.ralph/logs"
+mkdir -p "$PROJECT_ROOT/.ralph/skills" "$PROJECT_ROOT/.ralph/plans/archive" "$PROJECT_ROOT/.ralph/logs"
+
+if [[ ! -f "$PROJECT_ROOT/.ralph/plans/archive/README.md" ]]; then
+  cp "$SCRIPT_DIR/plans/archive/README.example.md" "$PROJECT_ROOT/.ralph/plans/archive/README.md"
+fi
 
 cp "$SCRIPT_DIR/.env.example" "$PROJECT_ROOT/.ralph/.env.example"
 copy_skill_templates

@@ -254,7 +254,7 @@ ralph
 ralph --unattended
 ```
 
-In unattended mode, the AI runs with elevated permissions (`--dangerously-skip-permissions` for Claude, or `--dangerously-bypass-approvals-and-sandbox` for Codex) and writes logs to `OUTPUT_LOG` and `ERROR_LOG` (defaults: `.ralph/logs/OUTPUT_LOG.md` and `.ralph/logs/ERROR_LOG.md`).
+In unattended mode, the AI runs with elevated permissions (`--dangerously-skip-permissions` for Claude, or `--dangerously-bypass-approvals-and-sandbox` for Codex) and writes logs to `EXECUTION_LOG` and `ERROR_LOG` (defaults: `.ralph/logs/EXECUTION_LOG.md` and `.ralph/logs/ERROR_LOG.md`).
 
 **Important:** Unattended mode is CLI-only and cannot be enabled via `.env` or environment variables. It only works with the execute phase (not freestyle mode).
 
@@ -343,7 +343,7 @@ These paths are configurable via `.env` or environment variables.
 Current runtime defaults for logs are:
 
 - `.ralph/logs/ERROR_LOG.md` - Error output from AI commands
-- `.ralph/logs/OUTPUT_LOG.md` - Standard output in unattended mode
+- `.ralph/logs/EXECUTION_LOG.md` - Standard output in unattended mode
 
 These paths are configurable via `.env` or environment variables.
 

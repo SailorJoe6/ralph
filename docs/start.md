@@ -44,7 +44,7 @@ ralph start [OPTIONS]
 **Handoff Behavior**
 - In execute mode, handoff runs only if both planning docs still exist.
 - Freestyle mode does not run automatic handoff between passes.
-- In unattended mode, handoff runs non-interactively and appends output to `OUTPUT_LOG`.
+- In unattended mode, handoff runs non-interactively and appends output to `EXECUTION_LOG`.
 
 **Exit And Looping**
 - Ralph loops indefinitely; interrupt with repeated `Ctrl+C` keystrokes.

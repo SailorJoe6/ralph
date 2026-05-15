@@ -18,7 +18,7 @@ Prompt file paths are hardcoded by runtime script and are not loaded from `.env`
 Ralph never loads from `.env.example` files.
 
 **Relative Path Resolution**
-- Relative paths in `<project_root>/.ralph/.env` are resolved relative to `<project_root>` for `SPECIFICATION`, `EXECUTION_PLAN`, `LOG_DIR`, `ERROR_LOG`, and `OUTPUT_LOG`.
+- Relative paths in `<project_root>/.ralph/.env` are resolved relative to `<project_root>` for `SPECIFICATION`, `EXECUTION_PLAN`, `LOG_DIR`, `ERROR_LOG`, and `EXECUTION_LOG`.
 
 Relative values in `~/.ralph/.env` and shell environment variables are used as written.
 
@@ -27,7 +27,7 @@ Relative values in `~/.ralph/.env` and shell environment variables are used as w
 - `EXECUTION_PLAN=.ralph/plans/EXECUTION_PLAN.md`
 - `LOG_DIR=.ralph/logs`
 - `ERROR_LOG=${LOG_DIR}/ERROR_LOG.md`
-- `OUTPUT_LOG=${LOG_DIR}/OUTPUT_LOG.md`
+- `EXECUTION_LOG=${LOG_DIR}/EXECUTION_LOG.md`
 - `CONTAINER_NAME=` (empty)
 - `CONTAINER_WORKDIR=` (empty; runtime computes `/<basename>` when `--container` is set without `--workdir`)
 - `CONTAINER_RUNTIME=docker`

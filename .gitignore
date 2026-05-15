@@ -1,5 +1,7 @@
 # Planning documents (ephemeral, per-project)
 plans/*
+!plans/archive/
+!plans/archive/README.example.md
 
 # Configuration (project-specific)
 .env
@@ -12,9 +14,7 @@ prompts/execute.md
 prompts/handoff.md
 prompts/blocked.md
 
-# Log files (created under ralph/logs/)
-logs/*
-!logs/.keep
+# Log files
 .ralph/logs/
 
 # Beads local state (Dolt data, logs, etc.)

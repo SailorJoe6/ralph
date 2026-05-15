@@ -218,10 +218,10 @@ printf 'plan\n' > "$PROJECT2/.ralph/plans/EXECUTION_PLAN.md"
 run_start "$PROJECT2" "$HOME2" "$FAKE_BIN2" "$START_BIN" --unattended
 assert_eq "$RUN_STATUS" "1" "unattended execute failure exit status"
 assert_contains "$RUN_STDOUT$RUN_STDERR" "Claude exited with status 7" "unattended status propagation"
-assert_exists "$PROJECT2/.ralph/logs/OUTPUT_LOG.md" "unattended output log path"
+assert_exists "$PROJECT2/.ralph/logs/EXECUTION_LOG.md" "unattended output log path"
 assert_exists "$PROJECT2/.ralph/logs/ERROR_LOG.md" "unattended error log path"
-assert_contains "$(cat "$PROJECT2/.ralph/logs/OUTPUT_LOG.md")" "Pass 1:" "unattended output log pass header"
-assert_contains "$(cat "$PROJECT2/.ralph/logs/OUTPUT_LOG.md")" "fake-claude-stdout" "unattended output capture"
+assert_contains "$(cat "$PROJECT2/.ralph/logs/EXECUTION_LOG.md")" "Pass 1:" "unattended output log pass header"
+assert_contains "$(cat "$PROJECT2/.ralph/logs/EXECUTION_LOG.md")" "fake-claude-stdout" "unattended output capture"
 assert_contains "$(cat "$PROJECT2/.ralph/logs/ERROR_LOG.md")" "fake-claude-stderr" "unattended error capture"
 
 # Case 3b: --unattended outside execute phase stays interactive and suppresses the unattended banner.

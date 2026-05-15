@@ -6,7 +6,7 @@ RALPH_CONFIG_KEYS=(
   EXECUTION_PLAN
   LOG_DIR
   ERROR_LOG
-  OUTPUT_LOG
+  EXECUTION_LOG
   CONTAINER_NAME
   CONTAINER_WORKDIR
   CONTAINER_RUNTIME
@@ -109,7 +109,7 @@ ralph_path_key_needs_project_resolution() {
   local value="$2"
 
   case "$key" in
-    SPECIFICATION|EXECUTION_PLAN|LOG_DIR|ERROR_LOG|OUTPUT_LOG)
+    SPECIFICATION|EXECUTION_PLAN|LOG_DIR|ERROR_LOG|EXECUTION_LOG)
       ;;
     *)
       return 1
@@ -229,8 +229,8 @@ ralph_apply_default_config_values() {
   if [[ -z "${ERROR_LOG:-}" ]]; then
     ERROR_LOG="${LOG_DIR}/ERROR_LOG.md"
   fi
-  if [[ -z "${OUTPUT_LOG:-}" ]]; then
-    OUTPUT_LOG="${LOG_DIR}/OUTPUT_LOG.md"
+  if [[ -z "${EXECUTION_LOG:-}" ]]; then
+    EXECUTION_LOG="${LOG_DIR}/EXECUTION_LOG.md"
   fi
 }
 

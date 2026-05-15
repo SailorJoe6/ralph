@@ -46,7 +46,7 @@ mkdir -p "$HOME_DIR/.ralph" "$PROJECT_DIR/.ralph"
   assert_eq "$EXECUTION_PLAN" ".ralph/plans/EXECUTION_PLAN.md" "defaults/execution_plan"
   assert_eq "$LOG_DIR" ".ralph/logs" "defaults/log_dir"
   assert_eq "$ERROR_LOG" ".ralph/logs/ERROR_LOG.md" "defaults/error_log"
-  assert_eq "$OUTPUT_LOG" ".ralph/logs/OUTPUT_LOG.md" "defaults/output_log"
+  assert_eq "$EXECUTION_LOG" ".ralph/logs/EXECUTION_LOG.md" "defaults/output_log"
   assert_eq "$CONTAINER_RUNTIME" "docker" "defaults/container_runtime"
   assert_eq "$USE_CODEX" "0" "defaults/use_codex"
 )
@@ -65,7 +65,7 @@ EOF
 
   assert_eq "$LOG_DIR" "user/logs" "user/log_dir"
   assert_eq "$ERROR_LOG" "user/logs/ERROR_LOG.md" "user/error_log_default_from_log_dir"
-  assert_eq "$OUTPUT_LOG" "user/logs/OUTPUT_LOG.md" "user/output_log_default_from_log_dir"
+  assert_eq "$EXECUTION_LOG" "user/logs/EXECUTION_LOG.md" "user/output_log_default_from_log_dir"
   assert_eq "$CONTAINER_RUNTIME" "podman" "user/container_runtime"
   assert_eq "$USE_CODEX" "1" "user/use_codex"
 )
@@ -83,7 +83,7 @@ EOF
 
   assert_eq "$LOG_DIR" "$PROJECT_DIR/project/logs" "project/log_dir_resolved"
   assert_eq "$ERROR_LOG" "$PROJECT_DIR/project/logs/ERROR_LOG.md" "project/error_log_default_from_resolved_log_dir"
-  assert_eq "$OUTPUT_LOG" "$PROJECT_DIR/project/logs/OUTPUT_LOG.md" "project/output_log_default_from_resolved_log_dir"
+  assert_eq "$EXECUTION_LOG" "$PROJECT_DIR/project/logs/EXECUTION_LOG.md" "project/output_log_default_from_resolved_log_dir"
   assert_eq "$CONTAINER_RUNTIME" "nerdctl" "project/container_runtime"
   assert_eq "$USE_CODEX" "0" "project/use_codex_alias_override"
 )
@@ -98,7 +98,7 @@ EOF
 
   assert_eq "$LOG_DIR" "shell/logs" "shell/log_dir"
   assert_eq "$ERROR_LOG" "shell/logs/ERROR_LOG.md" "shell/error_log_default_from_log_dir"
-  assert_eq "$OUTPUT_LOG" "shell/logs/OUTPUT_LOG.md" "shell/output_log_default_from_log_dir"
+  assert_eq "$EXECUTION_LOG" "shell/logs/EXECUTION_LOG.md" "shell/output_log_default_from_log_dir"
   assert_eq "$USE_CODEX" "1" "shell/use_codex_alias_override"
 )
 
@@ -108,7 +108,7 @@ SPECIFICATION=./docs/../docs/spec.md
 EXECUTION_PLAN=plans/./EXECUTION_PLAN.md
 LOG_DIR=.ralph-logs/../logs
 ERROR_LOG=logs/errors.md
-OUTPUT_LOG=./logs/output.md
+EXECUTION_LOG=./logs/output.md
 CALLBACK=scripts/check.sh
 EOF
 (
@@ -121,7 +121,7 @@ EOF
   assert_eq "$EXECUTION_PLAN" "$PROJECT_DIR/plans/EXECUTION_PLAN.md" "project/execution_plan_relative_resolution"
   assert_eq "$LOG_DIR" "$PROJECT_DIR/logs" "project/log_dir_relative_resolution"
   assert_eq "$ERROR_LOG" "$PROJECT_DIR/logs/errors.md" "project/error_log_relative_resolution"
-  assert_eq "$OUTPUT_LOG" "$PROJECT_DIR/logs/output.md" "project/output_log_relative_resolution"
+  assert_eq "$EXECUTION_LOG" "$PROJECT_DIR/logs/output.md" "project/output_log_relative_resolution"
   assert_eq "$CALLBACK" "scripts/check.sh" "project/callback_not_rewritten"
 )
 
