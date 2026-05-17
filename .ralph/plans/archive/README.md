@@ -8,3 +8,4 @@ Historical record of feature development in this repo. Each entry represents one
 |---------|--------|
 | [Refactor skills to directory-based layout with dynamic discovery](prompts-to-skills-refactor/) | 2026-05-11 |
 | [Archive README template, init integration, and EXECUTION_LOG rename](archive-readme-and-execution-log-rename/) | 2026-05-15 |
+| [Unattended mode diagnostic capture and retry with backoff](unattended-diagnostic-retry/) | 2026-05-17 |
