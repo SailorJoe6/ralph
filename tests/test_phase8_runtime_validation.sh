@@ -205,6 +205,10 @@ FAKE_BIN2="$TMP_ROOT/fake-bin-unattended"
 mkdir -p "$HOME2" "$PROJECT2/.ralph/prompts" "$PROJECT2/.ralph/plans" "$FAKE_BIN2"
 cat > "$FAKE_BIN2/claude" <<'EOF_FAKE_CLAUDE_UNATTENDED'
 #!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then
+  echo "fake-claude 0.0.0"
+  exit 0
+fi
 echo "fake-claude-stdout"
 echo "fake-claude-stderr" >&2
 exit 7
@@ -215,13 +219,21 @@ printf 'handoff prompt\n' > "$PROJECT2/.ralph/prompts/handoff.md"
 printf 'spec\n' > "$PROJECT2/.ralph/plans/SPECIFICATION.md"
 printf 'plan\n' > "$PROJECT2/.ralph/plans/EXECUTION_PLAN.md"
 
+# Add no-op sleep to speed up retry loop in tests
+cat > "$FAKE_BIN2/sleep" <<'EOF_FAKE_SLEEP'
+#!/usr/bin/env bash
+exit 0
+EOF_FAKE_SLEEP
+chmod +x "$FAKE_BIN2/sleep"
+
 run_start "$PROJECT2" "$HOME2" "$FAKE_BIN2" "$START_BIN" --unattended
 assert_eq "$RUN_STATUS" "1" "unattended execute failure exit status"
-assert_contains "$RUN_STDOUT$RUN_STDERR" "Claude exited with status 7" "unattended status propagation"
 assert_exists "$PROJECT2/.ralph/logs/EXECUTION_LOG.md" "unattended output log path"
 assert_exists "$PROJECT2/.ralph/logs/ERROR_LOG.md" "unattended error log path"
-assert_contains "$(cat "$PROJECT2/.ralph/logs/EXECUTION_LOG.md")" "Pass 1:" "unattended output log pass header"
+assert_contains "$(cat "$PROJECT2/.ralph/logs/EXECUTION_LOG.md")" "Pass 1 (attempt 1):" "unattended output log pass header"
 assert_contains "$(cat "$PROJECT2/.ralph/logs/EXECUTION_LOG.md")" "fake-claude-stdout" "unattended output capture"
+assert_contains "$(cat "$PROJECT2/.ralph/logs/EXECUTION_LOG.md")" "DIAGNOSTIC" "unattended diagnostic captured"
+assert_contains "$(cat "$PROJECT2/.ralph/logs/EXECUTION_LOG.md")" "FINAL: All 4 attempts failed" "unattended final failure message"
 assert_contains "$(cat "$PROJECT2/.ralph/logs/ERROR_LOG.md")" "fake-claude-stderr" "unattended error capture"
 
 # Case 3b: --unattended outside execute phase stays interactive and suppresses the unattended banner.
@@ -429,6 +441,11 @@ mkdir -p "$HOME4B" "$PROJECT4B/.ralph/prompts" "$PROJECT4B/.ralph/plans" "$FAKE_
 cat > "$FAKE_BIN4B/claude" <<'EOF_FAKE_CLAUDE_RESUME_UNATTENDED'
 #!/usr/bin/env bash
 set -euo pipefail
+# Skip --version calls (used by capture_diagnostic)
+if [[ "${1:-}" == "--version" ]]; then
+  echo "fake-claude 0.0.0"
+  exit 0
+fi
 : "${ARGS_LOG:?}"
 : "${COUNT_FILE:?}"
 count=0
@@ -450,6 +467,11 @@ echo "resume unattended claude stop" >&2
 exit 7
 EOF_FAKE_CLAUDE_RESUME_UNATTENDED
 chmod +x "$FAKE_BIN4B/claude"
+cat > "$FAKE_BIN4B/sleep" <<'EOF_FAKE_SLEEP'
+#!/usr/bin/env bash
+exit 0
+EOF_FAKE_SLEEP
+chmod +x "$FAKE_BIN4B/sleep"
 printf 'EXECUTE_PROMPT_TEXT\n' > "$PROJECT4B/.ralph/prompts/execute.md"
 printf 'spec\n' > "$PROJECT4B/.ralph/plans/SPECIFICATION.md"
 printf 'plan\n' > "$PROJECT4B/.ralph/plans/EXECUTION_PLAN.md"
@@ -457,13 +479,14 @@ printf 'plan\n' > "$PROJECT4B/.ralph/plans/EXECUTION_PLAN.md"
 rm -f "$ARGS_LOG4B" "$COUNT_FILE4B"
 run_start "$PROJECT4B" "$HOME4B" "$FAKE_BIN4B" env ARGS_LOG="$ARGS_LOG4B" COUNT_FILE="$COUNT_FILE4B" "$START_BIN" --resume --unattended
 assert_eq "$RUN_STATUS" "1" "--resume --unattended Claude two-pass exit status"
-assert_eq "$(wc -l < "$ARGS_LOG4B" | tr -d '[:space:]')" "2" "--resume --unattended Claude produced two calls"
+# Call sequence: 1=resume(pass1, succeeds), 2-5=pass2 retries (4 attempts, all fail)
+assert_eq "$(wc -l < "$ARGS_LOG4B" | tr -d '[:space:]')" "5" "--resume --unattended Claude produced five calls"
 RESUME_UNATTENDED_CLAUDE_FIRST="$(sed -n '1p' "$ARGS_LOG4B")"
-RESUME_UNATTENDED_CLAUDE_SECOND="$(sed -n '2p' "$ARGS_LOG4B")"
+RESUME_UNATTENDED_CLAUDE_PASS2="$(sed -n '2p' "$ARGS_LOG4B")"
 assert_contains "$RESUME_UNATTENDED_CLAUDE_FIRST" "[--continue][-p][continue]" "Claude unattended resume first pass uses only continue prompt"
 assert_not_contains "$RESUME_UNATTENDED_CLAUDE_FIRST" "[EXECUTE_PROMPT_TEXT]" "Claude unattended resume first pass does not send phase prompt"
-assert_not_contains "$RESUME_UNATTENDED_CLAUDE_SECOND" "[--continue]" "Claude unattended resume cleared after first pass"
-assert_contains "$RESUME_UNATTENDED_CLAUDE_SECOND" "[-p][EXECUTE_PROMPT_TEXT]" "Claude unattended second pass uses phase prompt"
+assert_not_contains "$RESUME_UNATTENDED_CLAUDE_PASS2" "[--continue]" "Claude unattended resume cleared after first pass"
+assert_contains "$RESUME_UNATTENDED_CLAUDE_PASS2" "[-p][EXECUTE_PROMPT_TEXT]" "Claude unattended second pass uses phase prompt"
 
 # Case 4c: interactive Codex resume does not send prompt on first pass.
 HOME4C="$TMP_ROOT/home-resume-codex"
@@ -520,6 +543,11 @@ mkdir -p "$HOME4D" "$PROJECT4D/.ralph/prompts" "$PROJECT4D/.ralph/plans" "$FAKE_
 cat > "$FAKE_BIN4D/codex" <<'EOF_FAKE_CODEX_RESUME_UNATTENDED'
 #!/usr/bin/env bash
 set -euo pipefail
+# Skip --version calls (used by capture_diagnostic)
+if [[ "${1:-}" == "--version" ]]; then
+  echo "fake-codex 0.0.0"
+  exit 0
+fi
 : "${ARGS_LOG:?}"
 : "${COUNT_FILE:?}"
 count=0
@@ -541,6 +569,11 @@ echo "resume unattended codex stop" >&2
 exit 7
 EOF_FAKE_CODEX_RESUME_UNATTENDED
 chmod +x "$FAKE_BIN4D/codex"
+cat > "$FAKE_BIN4D/sleep" <<'EOF_FAKE_SLEEP'
+#!/usr/bin/env bash
+exit 0
+EOF_FAKE_SLEEP
+chmod +x "$FAKE_BIN4D/sleep"
 printf 'CODEX_EXECUTE_PROMPT_TEXT\n' > "$PROJECT4D/.ralph/prompts/execute.md"
 printf 'spec\n' > "$PROJECT4D/.ralph/plans/SPECIFICATION.md"
 printf 'plan\n' > "$PROJECT4D/.ralph/plans/EXECUTION_PLAN.md"
@@ -548,13 +581,14 @@ printf 'plan\n' > "$PROJECT4D/.ralph/plans/EXECUTION_PLAN.md"
 rm -f "$ARGS_LOG4D" "$COUNT_FILE4D"
 run_start "$PROJECT4D" "$HOME4D" "$FAKE_BIN4D" env ARGS_LOG="$ARGS_LOG4D" COUNT_FILE="$COUNT_FILE4D" "$START_BIN" --codex --resume --unattended
 assert_eq "$RUN_STATUS" "1" "--codex --resume --unattended two-pass exit status"
-assert_eq "$(wc -l < "$ARGS_LOG4D" | tr -d '[:space:]')" "2" "--codex --resume --unattended produced two calls"
+# Call sequence: 1=resume(pass1, succeeds), 2-5=pass2 retries (4 attempts, all fail)
+assert_eq "$(wc -l < "$ARGS_LOG4D" | tr -d '[:space:]')" "5" "--codex --resume --unattended produced five calls"
 RESUME_UNATTENDED_CODEX_FIRST="$(sed -n '1p' "$ARGS_LOG4D")"
-RESUME_UNATTENDED_CODEX_SECOND="$(sed -n '2p' "$ARGS_LOG4D")"
+RESUME_UNATTENDED_CODEX_PASS2="$(sed -n '2p' "$ARGS_LOG4D")"
 assert_contains "$RESUME_UNATTENDED_CODEX_FIRST" "[exec][resume][--last][continue]" "Codex unattended resume first pass uses only continue token"
 assert_not_contains "$RESUME_UNATTENDED_CODEX_FIRST" "[CODEX_EXECUTE_PROMPT_TEXT]" "Codex unattended resume first pass does not send phase prompt"
-assert_not_contains "$RESUME_UNATTENDED_CODEX_SECOND" "[resume]" "Codex unattended resume cleared after first pass"
-assert_contains "$RESUME_UNATTENDED_CODEX_SECOND" "[exec][CODEX_EXECUTE_PROMPT_TEXT]" "Codex unattended second pass uses phase prompt"
+assert_not_contains "$RESUME_UNATTENDED_CODEX_PASS2" "[resume]" "Codex unattended resume cleared after first pass"
+assert_contains "$RESUME_UNATTENDED_CODEX_PASS2" "[exec][CODEX_EXECUTE_PROMPT_TEXT]" "Codex unattended second pass uses phase prompt"
 
 # Case 6: tool selection honors USECODEX compatibility alias and explicit --claude override.
 HOME5="$TMP_ROOT/home-tool-selection"
@@ -610,6 +644,10 @@ mkdir -p "$HOME5A" "$PROJECT5A/.ralph/prompts" "$PROJECT5A/.ralph/plans" "$FAKE_
 cat > "$FAKE_BIN5A/claude" <<'EOF_FAKE_CLAUDE_TEAMMATE_MODE'
 #!/usr/bin/env bash
 set -euo pipefail
+if [[ "${1:-}" == "--version" ]]; then
+  echo "fake-claude 0.0.0"
+  exit 0
+fi
 : "${ARGS_LOG:?}"
 : "${COUNT_FILE:?}"
 count=0
@@ -631,6 +669,11 @@ echo "teammate mode stop" >&2
 exit 7
 EOF_FAKE_CLAUDE_TEAMMATE_MODE
 chmod +x "$FAKE_BIN5A/claude"
+cat > "$FAKE_BIN5A/sleep" <<'EOF_FAKE_SLEEP'
+#!/usr/bin/env bash
+exit 0
+EOF_FAKE_SLEEP
+chmod +x "$FAKE_BIN5A/sleep"
 cat > "$PROJECT5A/.ralph/prompts/execute.md" <<'EOF_EXECUTE_WITH_FRONTMATTER'
 ---
 name: execute
@@ -762,6 +805,11 @@ echo "unexpected docker args: $*" >&2
 exit 2
 EOF_FAKE_DOCKER
 chmod +x "$FAKE_BIN5/docker"
+cat > "$FAKE_BIN5/sleep" <<'EOF_FAKE_SLEEP'
+#!/usr/bin/env bash
+exit 0
+EOF_FAKE_SLEEP
+chmod +x "$FAKE_BIN5/sleep"
 printf 'execute prompt\n' > "$PROJECT5/.ralph/prompts/execute.md"
 printf 'handoff prompt\n' > "$PROJECT5/.ralph/prompts/handoff.md"
 printf 'spec\n' > "$PROJECT5/.ralph/plans/SPECIFICATION.md"

@@ -25,5 +25,6 @@ This guide is for contributors working on Ralph itself.
 - Run `bash ralph/tests/test_init_v2.sh` to validate deterministic V2 `ralph init` behavior.
 - Run `bash ralph/tests/test_upgrade_v2.sh` to validate deterministic V2 `ralph upgrade` migration behavior and safety constraints.
 - Run `bash ralph/tests/test_install_v2.sh` to validate V2 global install behavior and idempotency.
+- Run `bash ralph/tests/test_diagnostic_retry.sh` to validate unattended mode diagnostic capture and retry-with-backoff behavior.
 - If you have the CLIs installed, run a smoke test with `ralph` in a sandbox project.
 - Optional: run `shellcheck ralph/ralph ralph/start ralph/init ralph/upgrade ralph/install` if you have ShellCheck installed.

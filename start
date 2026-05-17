@@ -457,6 +457,83 @@ interrupt_detected_in_output_log() {
   return 1
 }
 
+map_signal_name() {
+  local code="$1"
+  case "$code" in
+    127) echo "command not found" ;;
+    130) echo "SIGINT" ;;
+    134) echo "SIGABRT" ;;
+    137) echo "SIGKILL" ;;
+    139) echo "SIGSEGV" ;;
+    143) echo "SIGTERM" ;;
+    *)   echo "" ;;
+  esac
+}
+
+capture_diagnostic() {
+  local pass="$1"
+  local attempt="$2"
+  local exit_code="$3"
+  local error_log="$4"
+  local error_offset="$5"
+  local execution_log="$6"
+  local output_offset="$7"
+
+  local signal_name
+  signal_name="$(map_signal_name "$exit_code")"
+  local exit_display="$exit_code"
+  if [[ -n "$signal_name" ]]; then
+    exit_display="$exit_code ($signal_name)"
+  fi
+
+  local version_cmd="claude --version"
+  if [[ $USE_CODEX -eq 1 ]]; then
+    version_cmd="codex --version"
+  fi
+  local cli_version
+  cli_version="$($version_cmd 2>/dev/null || echo "unknown")"
+
+  local disk_usage
+  disk_usage="$(df -h . 2>/dev/null | tail -1 || true)"
+
+  local memory_info
+  if [[ "$(uname)" == "Darwin" ]]; then
+    memory_info="$(vm_stat 2>/dev/null | head -5 || true)"
+  else
+    memory_info="$(head -5 /proc/meminfo 2>/dev/null || true)"
+  fi
+
+  local load_avg
+  load_avg="$(uptime 2>/dev/null || true)"
+
+  {
+    printf '\n--- DIAGNOSTIC (pass %d, attempt %d) ---\n' "$pass" "$attempt"
+    printf 'Timestamp: %s\n' "$(date -u +"%Y-%m-%dT%H:%M:%S%z" 2>/dev/null || date)"
+    printf 'Exit code: %s\n' "$exit_display"
+
+    printf 'CLI version: %s\n' "$cli_version"
+
+    printf '\nError log (new content):\n'
+    if [[ -f "$error_log" ]]; then
+      tail -c "+$((error_offset + 1))" "$error_log" 2>/dev/null || echo "(empty)"
+    else
+      echo "(no error log)"
+    fi
+
+    printf '\nLast 20 lines of output from this pass:\n'
+    if [[ -f "$execution_log" ]]; then
+      tail -c "+$((output_offset + 1))" "$execution_log" 2>/dev/null | tail -20 || echo "(empty)"
+    else
+      echo "(no execution log)"
+    fi
+
+    printf '\nDisk usage: %s\n' "$disk_usage"
+    printf 'Memory:\n%s\n' "$memory_info"
+    printf 'Load: %s\n' "$load_avg"
+    printf '%s\n' "--- END DIAGNOSTIC ---"
+  } >> "$execution_log"
+}
+
 run_codex() {
   local noninteractive="$1"
   local prompt_text="$2"
@@ -638,53 +715,84 @@ while :; do
   ensure_container_running
   prompt_text="$(load_prompt_text "$PROMPT")"
   if [[ $NONINTERACTIVE -eq 1 ]]; then
-    error_offset=0
-    output_offset=0
-    if [[ -f "$ERROR_LOG" ]]; then
-      error_offset=$(wc -c < "$ERROR_LOG")
-    fi
-    if [[ -f "$EXECUTION_LOG" ]]; then
-      output_offset=$(wc -c < "$EXECUTION_LOG")
-    fi
-    {
-      printf '\n---\n\nPass %d:\n' "$PASS"
-      if [[ $USE_CODEX -eq 1 ]]; then
-        run_codex 1 "$prompt_text"
-      else
-        run_claude 1 "$prompt_text"
+    MAX_ATTEMPTS=4
+    BACKOFF_DELAYS=(0 5 15 45)
+    attempt=1
+
+    while [[ $attempt -le $MAX_ATTEMPTS ]]; do
+      if [[ $attempt -gt 1 ]]; then
+        sleep "${BACKOFF_DELAYS[$((attempt - 1))]}"
       fi
-    } >> "$EXECUTION_LOG" 2> "$ERROR_LOG"
+
+      error_offset=0
+      output_offset=0
+      if [[ -f "$ERROR_LOG" ]]; then
+        error_offset=$(wc -c < "$ERROR_LOG")
+      fi
+      if [[ -f "$EXECUTION_LOG" ]]; then
+        output_offset=$(wc -c < "$EXECUTION_LOG")
+      fi
+
+      {
+        printf '\n---\n\nPass %d (attempt %d):\n' "$PASS" "$attempt"
+        if [[ $USE_CODEX -eq 1 ]]; then
+          run_codex 1 "$prompt_text"
+        else
+          run_claude 1 "$prompt_text"
+        fi
+      } >> "$EXECUTION_LOG" 2> "$ERROR_LOG"
+      status=$?
+      RESUME_PENDING=0
+
+      if [[ -f "$ERROR_LOG" ]]; then
+        if interrupt_detected_in_error_log "$ERROR_LOG" "$error_offset"; then
+          exit 0
+        fi
+      fi
+      if [[ -f "$EXECUTION_LOG" ]]; then
+        if interrupt_detected_in_output_log "$EXECUTION_LOG" "$output_offset"; then
+          exit 0
+        fi
+      fi
+      if [[ $status -eq 130 ]]; then
+        exit 0
+      fi
+
+      if [[ $status -eq 0 ]]; then
+        break
+      fi
+
+      capture_diagnostic "$PASS" "$attempt" "$status" "$ERROR_LOG" "$error_offset" "$EXECUTION_LOG" "$output_offset"
+
+      attempt=$((attempt + 1))
+    done
+
+    if [[ $status -ne 0 ]]; then
+      printf '\n--- FINAL: All %d attempts failed for pass %d. Exiting. ---\n' "$MAX_ATTEMPTS" "$PASS" >> "$EXECUTION_LOG"
+      exit 1
+    fi
+
   else
     if [[ $USE_CODEX -eq 1 ]]; then
       run_codex 0 "$prompt_text" 2> "$ERROR_LOG"
     else
       run_claude 0 "$prompt_text" 2> "$ERROR_LOG"
     fi
-  fi
-  status=$?
-  RESUME_PENDING=0
-  if [[ $NONINTERACTIVE -eq 1 && -f "$ERROR_LOG" ]]; then
-    if interrupt_detected_in_error_log "$ERROR_LOG" "$error_offset"; then
-      exit 0
-    fi
-  fi
-  if [[ $NONINTERACTIVE -eq 1 && -f "$EXECUTION_LOG" ]]; then
-    if interrupt_detected_in_output_log "$EXECUTION_LOG" "$output_offset"; then
-      exit 0
-    fi
-  fi
-  if [[ $status -eq 130 ]]; then
-    exit 0
-  fi
+    status=$?
+    RESUME_PENDING=0
 
-  if [[ $status -ne 0 ]]; then
-    if [[ $USE_CODEX -eq 1 ]]; then
-      echo "Codex exited with status $status"
-    else
-      echo "Claude exited with status $status"
+    if [[ $status -eq 130 ]]; then
+      exit 0
     fi
-    cat "$ERROR_LOG"
-    exit 1
+    if [[ $status -ne 0 ]]; then
+      if [[ $USE_CODEX -eq 1 ]]; then
+        echo "Codex exited with status $status"
+      else
+        echo "Claude exited with status $status"
+      fi
+      cat "$ERROR_LOG"
+      exit 1
+    fi
   fi
 
   # Run handoff only for non-freestyle execute passes when both planning docs still exist.
