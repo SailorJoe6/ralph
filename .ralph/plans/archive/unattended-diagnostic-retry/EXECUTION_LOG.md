@@ -47,3 +47,10 @@ Ready to hand off.
 ---
 
 Pass 4:
+Done. The "Unattended mode diagnostic capture and retry with backoff" plan was fully implemented in a prior session. I archived the planning docs:
+
+- Moved `SPECIFICATION.md`, `EXECUTION_PLAN.md`, and `EXECUTION_LOG.md` to `.ralph/plans/archive/unattended-diagnostic-retry/`
+- Updated the archive README with the new entry (landed 2026-05-17)
+- Committed and pushed to `origin/main` (commit `c2d3ab7`)
+
+There is no more work to do on this plan. The remaining untracked files are unrelated scaffolding (spec-it-out skill, .env.example, and a stray execution log from a prior archive cycle).
